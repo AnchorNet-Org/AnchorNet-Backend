@@ -1,0 +1,43 @@
+import { AnchorService } from "./anchorService";
+import { AnchorRepository } from "../repositories/anchorRepository";
+import { ApiError } from "../errors/ApiError";
+
+function makeService(): AnchorService {
+  return new AnchorService(new AnchorRepository());
+}
+
+describe("AnchorService", () => {
+  it("registers an anchor and defaults the name to the id", () => {
+    const service = makeService();
+    const anchor = service.register({ id: "anchorA" });
+
+    expect(anchor.name).toBe("anchorA");
+    expect(anchor.active).toBe(true);
+  });
+
+  it("rejects a duplicate registration", () => {
+    const service = makeService();
+    service.register({ id: "anchorA" });
+
+    expect(() => service.register({ id: "anchorA" })).toThrow(ApiError);
+  });
+
+  it("rejects a blank id", () => {
+    const service = makeService();
+    expect(() => service.register({ id: "" })).toThrow(ApiError);
+  });
+
+  it("throws 404 for an unknown anchor", () => {
+    const service = makeService();
+    expect(() => service.get("missing")).toThrow(ApiError);
+  });
+
+  it("deactivates an anchor on deregister", () => {
+    const service = makeService();
+    service.register({ id: "anchorA" });
+
+    const updated = service.deregister("anchorA");
+    expect(updated.active).toBe(false);
+    expect(service.isActive("anchorA")).toBe(false);
+  });
+});
