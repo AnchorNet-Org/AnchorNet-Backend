@@ -9,10 +9,16 @@ import express, { Express, Request, Response } from "express";
 import cors from "cors";
 
 import { LiquidityRepository } from "./repositories/liquidityRepository";
+import { AnchorRepository } from "./repositories/anchorRepository";
+import { SettlementRepository } from "./repositories/settlementRepository";
 import { LiquidityService } from "./services/liquidityService";
 import { QuoteService } from "./services/quoteService";
+import { AnchorService } from "./services/anchorService";
+import { SettlementService } from "./services/settlementService";
 import { liquidityRouter } from "./routes/liquidity";
 import { quoteRouter } from "./routes/quote";
+import { anchorRouter } from "./routes/anchors";
+import { settlementRouter } from "./routes/settlements";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { requestLogger } from "./middleware/requestLogger";
 
@@ -27,6 +33,12 @@ export function createApp(): Express {
   const repo = new LiquidityRepository();
   const liquidity = new LiquidityService(repo);
   const quotes = new QuoteService(repo);
+  const anchors = new AnchorService(new AnchorRepository());
+  const settlements = new SettlementService(
+    new SettlementRepository(),
+    repo,
+    anchors,
+  );
 
   app.get("/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "anchornet-backend" });
@@ -42,6 +54,8 @@ export function createApp(): Express {
 
   app.use("/api/v1/liquidity", liquidityRouter(liquidity));
   app.use("/api/v1/quote", quoteRouter(quotes));
+  app.use("/api/v1/anchors", anchorRouter(anchors));
+  app.use("/api/v1/settlements", settlementRouter(settlements));
 
   app.use(notFoundHandler);
   app.use(errorHandler);
