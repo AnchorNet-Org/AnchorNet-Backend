@@ -60,16 +60,48 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
   `{ asset, amount, fee, deliverable, route }`. Returns `400`
   (`INSUFFICIENT_LIQUIDITY`) when the pool cannot cover the amount.
 
-Errors use a uniform envelope: `{ "error": { "code", "message" } }`.
+### Anchors
+
+- `POST /api/v1/anchors` – register an anchor `{ id, name? }` (`409` if it exists)
+- `GET /api/v1/anchors` – list anchors
+- `GET /api/v1/anchors/:id` – read one anchor (`404` if unknown)
+- `DELETE /api/v1/anchors/:id` – deactivate an anchor
+
+### Settlements
+
+- `POST /api/v1/settlements` – open a settlement `{ anchor, asset, amount }`,
+  reserving liquidity. Returns `201` with the pending settlement.
+- `GET /api/v1/settlements` – list settlements; supports `?anchor=`, `?page=`,
+  `?pageSize=`
+- `GET /api/v1/settlements/:id` – read one settlement
+- `POST /api/v1/settlements/:id/execute` – execute a pending settlement
+- `POST /api/v1/settlements/:id/cancel` – cancel and release reserved liquidity
+
+### Metrics
+
+- `GET /api/v1/metrics` – aggregate counts (anchors, pools, liquidity, settlements)
+
+Errors use a uniform envelope: `{ "error": { "code", "message" } }`. Every
+response carries an `x-request-id` header for tracing.
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3001` | HTTP port |
+| `FEE_BPS` | `10` | Protocol fee in basis points |
+| `API_KEY` | – | If set, mutating requests must send `x-api-key` |
+| `NODE_ENV` | `development` | Environment name |
 
 ### Architecture
 
 ```
 routes/        HTTP layer (thin controllers)
-services/      business rules (liquidity, routing/quotes)
-repositories/  in-memory store (swappable for an indexer)
-middleware/    request logging, error handling
+services/      business rules (liquidity, quotes, anchors, settlements)
+repositories/  in-memory stores (swappable for an indexer)
+middleware/    request id, logging, API-key auth, error handling
 models/        domain types
+config.ts      env-based configuration
 ```
 
 ## Contributing
