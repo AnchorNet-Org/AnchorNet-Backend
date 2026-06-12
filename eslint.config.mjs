@@ -30,7 +30,15 @@ export default [
       globals: { ...nodeGlobals },
     },
     plugins: { "@typescript-eslint": tseslint },
-    rules: {},
+    rules: {
+      // Core no-unused-vars misreports TS parameter properties and type-only
+      // constructs; defer to the TypeScript-aware version instead.
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_" },
+      ],
+    },
   },
   {
     files: ["src/**/*.test.ts"],
