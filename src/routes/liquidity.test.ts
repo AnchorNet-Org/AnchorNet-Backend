@@ -1,0 +1,60 @@
+import request from "supertest";
+import { createApp } from "../app";
+
+describe("liquidity routes", () => {
+  it("creates liquidity and returns the stored entry", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "usdc", amount: 500 });
+
+    expect(res.status).toBe(201);
+    expect(res.body.asset).toBe("USDC");
+    expect(res.body.amount).toBe(500);
+  });
+
+  it("lists aggregated pools", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorB", asset: "USDC", amount: 300 });
+
+    const res = await request(app).get("/api/v1/liquidity");
+    expect(res.status).toBe(200);
+    expect(res.body.pools).toEqual([
+      { asset: "USDC", total: 800, anchors: 2 },
+    ]);
+  });
+
+  it("reads a single pool by asset", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+
+    const res = await request(app).get("/api/v1/liquidity/usdc");
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(500);
+  });
+
+  it("returns 400 for an invalid amount", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: -1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
+
+  it("returns 404 for an unknown pool", async () => {
+    const app = createApp();
+    const res = await request(app).get("/api/v1/liquidity/XLM");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+});
