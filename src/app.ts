@@ -8,11 +8,23 @@
 import express, { Express, Request, Response } from "express";
 import cors from "cors";
 
+import { LiquidityRepository } from "./repositories/liquidityRepository";
+import { LiquidityService } from "./services/liquidityService";
+import { QuoteService } from "./services/quoteService";
+import { liquidityRouter } from "./routes/liquidity";
+import { quoteRouter } from "./routes/quote";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+
 export function createApp(): Express {
   const app = express();
 
   app.use(cors());
   app.use(express.json());
+
+  // Shared in-memory state and services for this process.
+  const repo = new LiquidityRepository();
+  const liquidity = new LiquidityService(repo);
+  const quotes = new QuoteService(repo);
 
   app.get("/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "anchornet-backend" });
@@ -25,6 +37,12 @@ export function createApp(): Express {
       description: "Liquidity coordination network for Stellar anchors",
     });
   });
+
+  app.use("/api/v1/liquidity", liquidityRouter(liquidity));
+  app.use("/api/v1/quote", quoteRouter(quotes));
+
+  app.use(notFoundHandler);
+  app.use(errorHandler);
 
   return app;
 }
