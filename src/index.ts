@@ -1,28 +1,12 @@
 /**
  * AnchorNet API – entry point.
- * Provides routing, settlement, and liquidity indexer endpoints.
+ * Builds the application and starts the HTTP server.
  */
 
-import express, { Request, Response } from "express";
-import cors from "cors";
+import { createApp } from "./app";
 
-const app = express();
+const app = createApp();
 const PORT = process.env.PORT ?? 3001;
-
-app.use(cors());
-app.use(express.json());
-
-app.get("/health", (_req: Request, res: Response) => {
-  res.json({ status: "ok", service: "anchornet-backend" });
-});
-
-app.get("/api/v1/info", (_req: Request, res: Response) => {
-  res.json({
-    name: "AnchorNet API",
-    version: "0.1.0",
-    description: "Liquidity coordination network for Stellar anchors",
-  });
-});
 
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
