@@ -22,6 +22,7 @@ import { settlementRouter } from "./routes/settlements";
 import { metricsRouter } from "./routes/metrics";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { requestLogger } from "./middleware/requestLogger";
+import { requestId } from "./middleware/requestId";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import { loadConfig } from "./config";
 
@@ -31,6 +32,7 @@ export function createApp(): Express {
 
   app.use(cors());
   app.use(express.json());
+  app.use(requestId);
   app.use(requestLogger);
   app.use(apiKeyAuth(config.apiKey));
 
