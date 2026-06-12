@@ -19,6 +19,7 @@ import { liquidityRouter } from "./routes/liquidity";
 import { quoteRouter } from "./routes/quote";
 import { anchorRouter } from "./routes/anchors";
 import { settlementRouter } from "./routes/settlements";
+import { metricsRouter } from "./routes/metrics";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { requestLogger } from "./middleware/requestLogger";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
@@ -61,6 +62,10 @@ export function createApp(): Express {
   app.use("/api/v1/quote", quoteRouter(quotes));
   app.use("/api/v1/anchors", anchorRouter(anchors));
   app.use("/api/v1/settlements", settlementRouter(settlements));
+  app.use(
+    "/api/v1/metrics",
+    metricsRouter({ liquidity, anchors, settlements }),
+  );
 
   app.use(notFoundHandler);
   app.use(errorHandler);
