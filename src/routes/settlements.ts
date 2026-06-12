@@ -4,6 +4,7 @@
 
 import { Router, Request, Response } from "express";
 import { SettlementService } from "../services/settlementService";
+import { paginate } from "../utils/pagination";
 
 export function settlementRouter(service: SettlementService): Router {
   const router = Router();
@@ -13,11 +14,16 @@ export function settlementRouter(service: SettlementService): Router {
     res.status(201).json(service.open(req.body ?? {}));
   });
 
-  // List settlements, optionally filtered by ?anchor=.
+  // List settlements, optionally filtered by ?anchor= and paginated via
+  // ?page= and ?pageSize=.
   router.get("/", (req: Request, res: Response) => {
     const anchor =
       typeof req.query.anchor === "string" ? req.query.anchor : undefined;
-    res.json({ settlements: service.list(anchor) });
+    const page = paginate(service.list(anchor), {
+      page: req.query.page,
+      pageSize: req.query.pageSize,
+    });
+    res.json({ settlements: page.items, pagination: { ...page, items: undefined } });
   });
 
   // Read a single settlement.
