@@ -18,6 +18,11 @@ const jestGlobals = {
   it: "readonly",
   expect: "readonly",
   test: "readonly",
+  beforeEach: "readonly",
+  afterEach: "readonly",
+  beforeAll: "readonly",
+  afterAll: "readonly",
+  jest: "readonly",
 };
 
 export default [
