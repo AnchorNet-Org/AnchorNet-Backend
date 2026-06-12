@@ -14,12 +14,14 @@ import { QuoteService } from "./services/quoteService";
 import { liquidityRouter } from "./routes/liquidity";
 import { quoteRouter } from "./routes/quote";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { requestLogger } from "./middleware/requestLogger";
 
 export function createApp(): Express {
   const app = express();
 
   app.use(cors());
   app.use(express.json());
+  app.use(requestLogger);
 
   // Shared in-memory state and services for this process.
   const repo = new LiquidityRepository();
