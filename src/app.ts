@@ -21,23 +21,28 @@ import { anchorRouter } from "./routes/anchors";
 import { settlementRouter } from "./routes/settlements";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { requestLogger } from "./middleware/requestLogger";
+import { apiKeyAuth } from "./middleware/apiKeyAuth";
+import { loadConfig } from "./config";
 
 export function createApp(): Express {
   const app = express();
+  const config = loadConfig();
 
   app.use(cors());
   app.use(express.json());
   app.use(requestLogger);
+  app.use(apiKeyAuth(config.apiKey));
 
   // Shared in-memory state and services for this process.
   const repo = new LiquidityRepository();
   const liquidity = new LiquidityService(repo);
-  const quotes = new QuoteService(repo);
+  const quotes = new QuoteService(repo, config.feeBps);
   const anchors = new AnchorService(new AnchorRepository());
   const settlements = new SettlementService(
     new SettlementRepository(),
     repo,
     anchors,
+    config.feeBps,
   );
 
   app.get("/health", (_req: Request, res: Response) => {
@@ -47,7 +52,7 @@ export function createApp(): Express {
   app.get("/api/v1/info", (_req: Request, res: Response) => {
     res.json({
       name: "AnchorNet API",
-      version: "0.1.0",
+      version: "0.2.0",
       description: "Liquidity coordination network for Stellar anchors",
     });
   });
