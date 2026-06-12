@@ -38,10 +38,39 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 | `npm test` | Run tests (Jest) |
 | `npm run lint` | Run ESLint |
 
-## API (starter)
+## API
+
+### Service
 
 - `GET /health` – health check
 - `GET /api/v1/info` – API name and version
+
+### Liquidity
+
+- `POST /api/v1/liquidity` – record liquidity `{ anchor, asset, amount }`; repeated
+  contributions from the same anchor accumulate. Returns `201` with the entry.
+- `GET /api/v1/liquidity` – list aggregated pools `{ pools: [{ asset, total, anchors }] }`
+- `GET /api/v1/liquidity/entries` – list raw per-anchor entries
+- `GET /api/v1/liquidity/:asset` – aggregated pool for one asset (`404` if none)
+
+### Routing
+
+- `POST /api/v1/quote` – compute a routing quote `{ asset, amount }`. Selects
+  anchor liquidity largest-first and applies the protocol fee, returning
+  `{ asset, amount, fee, deliverable, route }`. Returns `400`
+  (`INSUFFICIENT_LIQUIDITY`) when the pool cannot cover the amount.
+
+Errors use a uniform envelope: `{ "error": { "code", "message" } }`.
+
+### Architecture
+
+```
+routes/        HTTP layer (thin controllers)
+services/      business rules (liquidity, routing/quotes)
+repositories/  in-memory store (swappable for an indexer)
+middleware/    request logging, error handling
+models/        domain types
+```
 
 ## Contributing
 
