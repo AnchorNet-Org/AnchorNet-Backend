@@ -57,4 +57,62 @@ describe("liquidity routes", () => {
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("NOT_FOUND");
   });
+
+  it("withdraws liquidity and returns the reduced entry", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+
+    const res = await request(app)
+      .post("/api/v1/liquidity/withdraw")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 200 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.amount).toBe(300);
+
+    const pool = await request(app).get("/api/v1/liquidity/USDC");
+    expect(pool.body.total).toBe(300);
+  });
+
+  it("removes the pool once the full balance is withdrawn", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+
+    const res = await request(app)
+      .post("/api/v1/liquidity/withdraw")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.amount).toBe(0);
+
+    const pool = await request(app).get("/api/v1/liquidity/USDC");
+    expect(pool.status).toBe(404);
+  });
+
+  it("returns 400 when withdrawing more than the available balance", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+    const res = await request(app)
+      .post("/api/v1/liquidity/withdraw")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 200 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("INSUFFICIENT_LIQUIDITY");
+  });
+
+  it("returns 404 when withdrawing from an anchor with no balance", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/liquidity/withdraw")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 10 });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
 });
