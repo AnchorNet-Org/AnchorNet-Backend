@@ -50,4 +50,32 @@ describe("anchor routes", () => {
     const res = await request(app).get("/api/v1/anchors/missing");
     expect(res.status).toBe(404);
   });
+
+  it("filters the anchor list by status", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+    await request(app).post("/api/v1/anchors").send({ id: "anchorB" });
+    await request(app).delete("/api/v1/anchors/anchorB");
+
+    const active = await request(app).get("/api/v1/anchors?status=active");
+    expect(active.status).toBe(200);
+    expect(active.body.anchors.map((a: { id: string }) => a.id)).toEqual([
+      "anchorA",
+    ]);
+
+    const inactive = await request(app).get(
+      "/api/v1/anchors?status=inactive",
+    );
+    expect(inactive.body.anchors.map((a: { id: string }) => a.id)).toEqual([
+      "anchorB",
+    ]);
+  });
+
+  it("returns 400 for an invalid status filter", async () => {
+    const app = createApp();
+    const res = await request(app).get("/api/v1/anchors?status=bogus");
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
 });
