@@ -11,6 +11,8 @@ const nodeGlobals = {
   require: "readonly",
   exports: "writable",
   Buffer: "readonly",
+  setTimeout: "readonly",
+  clearTimeout: "readonly",
 };
 
 const jestGlobals = {
