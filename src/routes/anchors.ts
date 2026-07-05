@@ -14,9 +14,9 @@ export function anchorRouter(service: AnchorService): Router {
     res.status(201).json(anchor);
   });
 
-  // List all anchors.
-  router.get("/", (_req: Request, res: Response) => {
-    res.json({ anchors: service.list() });
+  // List anchors, optionally filtered via ?status=active|inactive.
+  router.get("/", (req: Request, res: Response) => {
+    res.json({ anchors: service.list(req.query.status) });
   });
 
   // Read a single anchor by id.
