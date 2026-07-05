@@ -49,6 +49,11 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 
 - `POST /api/v1/liquidity` – record liquidity `{ anchor, asset, amount }`; repeated
   contributions from the same anchor accumulate. Returns `201` with the entry.
+- `POST /api/v1/liquidity/withdraw` – withdraw liquidity `{ anchor, asset, amount }`
+  previously recorded by an anchor, mirroring the on-chain contract's
+  `withdraw_liquidity`. Reduces the anchor's balance and removes the entry
+  once it reaches zero. Returns `404` if the anchor holds no balance in the
+  asset, or `400` (`INSUFFICIENT_LIQUIDITY`) if the amount exceeds it.
 - `GET /api/v1/liquidity` – list aggregated pools `{ pools: [{ asset, total, anchors }] }`
 - `GET /api/v1/liquidity/entries` – list raw per-anchor entries
 - `GET /api/v1/liquidity/:asset` – aggregated pool for one asset (`404` if none)
@@ -63,7 +68,8 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 ### Anchors
 
 - `POST /api/v1/anchors` – register an anchor `{ id, name? }` (`409` if it exists)
-- `GET /api/v1/anchors` – list anchors
+- `GET /api/v1/anchors` – list anchors; supports `?status=active` or
+  `?status=inactive` (`400` for any other value)
 - `GET /api/v1/anchors/:id` – read one anchor (`404` if unknown)
 - `DELETE /api/v1/anchors/:id` – deactivate an anchor
 
@@ -84,6 +90,10 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 Errors use a uniform envelope: `{ "error": { "code", "message" } }`. Every
 response carries an `x-request-id` header for tracing.
 
+Mutating requests (`POST`/`PUT`/`PATCH`/`DELETE`) are rate-limited per client
+IP (default 30 requests/minute, in-memory). Requests over the limit receive
+`429` with code `RATE_LIMITED`.
+
 ## Configuration
 
 | Variable | Default | Description |
@@ -99,7 +109,7 @@ response carries an `x-request-id` header for tracing.
 routes/        HTTP layer (thin controllers)
 services/      business rules (liquidity, quotes, anchors, settlements)
 repositories/  in-memory stores (swappable for an indexer)
-middleware/    request id, logging, API-key auth, error handling
+middleware/    request id, logging, API-key auth, rate limiting, error handling
 models/        domain types
 config.ts      env-based configuration
 ```
