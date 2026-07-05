@@ -14,6 +14,12 @@ export function liquidityRouter(service: LiquidityService): Router {
     res.status(201).json(entry);
   });
 
+  // Withdraw (reduce) liquidity previously recorded for an anchor/asset pair.
+  router.post("/withdraw", (req: Request, res: Response) => {
+    const entry = service.withdrawLiquidity(req.body ?? {});
+    res.json(entry);
+  });
+
   // List aggregated pools across all assets.
   router.get("/", (_req: Request, res: Response) => {
     res.json({ pools: service.listPools() });
