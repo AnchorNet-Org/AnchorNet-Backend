@@ -40,4 +40,36 @@ describe("AnchorService", () => {
     expect(updated.active).toBe(false);
     expect(service.isActive("anchorA")).toBe(false);
   });
+
+  it("returns every anchor when no status filter is given", () => {
+    const service = makeService();
+    service.register({ id: "anchorA" });
+    service.register({ id: "anchorB" });
+    service.deregister("anchorB");
+
+    expect(service.list().map((a) => a.id)).toEqual(["anchorA", "anchorB"]);
+  });
+
+  it("filters anchors by active status", () => {
+    const service = makeService();
+    service.register({ id: "anchorA" });
+    service.register({ id: "anchorB" });
+    service.deregister("anchorB");
+
+    expect(service.list("active").map((a) => a.id)).toEqual(["anchorA"]);
+  });
+
+  it("filters anchors by inactive status", () => {
+    const service = makeService();
+    service.register({ id: "anchorA" });
+    service.register({ id: "anchorB" });
+    service.deregister("anchorB");
+
+    expect(service.list("inactive").map((a) => a.id)).toEqual(["anchorB"]);
+  });
+
+  it("rejects an invalid status filter", () => {
+    const service = makeService();
+    expect(() => service.list("bogus")).toThrow(ApiError);
+  });
 });
