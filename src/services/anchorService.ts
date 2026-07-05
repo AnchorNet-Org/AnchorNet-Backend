@@ -30,9 +30,23 @@ export class AnchorService {
     });
   }
 
-  /** Returns every anchor. */
-  list(): Anchor[] {
-    return this.repo.all();
+  /**
+   * Returns anchors, optionally filtered by active status. `statusInput` must
+   * be `"active"`, `"inactive"`, or `undefined` (no filter); anything else is
+   * a 400.
+   */
+  list(statusInput?: unknown): Anchor[] {
+    if (statusInput === undefined) {
+      return this.repo.all();
+    }
+
+    const status = requireString(statusInput, "status");
+    if (status !== "active" && status !== "inactive") {
+      throw ApiError.badRequest('"status" must be "active" or "inactive"');
+    }
+
+    const active = status === "active";
+    return this.repo.all().filter((anchor) => anchor.active === active);
   }
 
   /** Returns one anchor or 404. */
