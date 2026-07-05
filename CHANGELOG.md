@@ -2,6 +2,20 @@
 
 All notable changes to the AnchorNet API are documented here.
 
+## [0.3.0]
+
+### Added
+
+- **Liquidity:** `POST /api/v1/liquidity/withdraw` to withdraw previously
+  recorded liquidity, mirroring the on-chain contract's `withdraw_liquidity`.
+  Reduces an anchor's balance and removes the entry once it reaches zero.
+- **Anchors:** `?status=active` / `?status=inactive` filter on
+  `GET /api/v1/anchors`.
+- **Middleware:** in-memory rate limiting for mutating requests (default 30
+  requests/minute per client IP), returning `429` (`RATE_LIMITED`) when
+  exceeded.
+- **Errors:** a `tooManyRequests` (429) helper on `ApiError`.
+
 ## [0.2.0]
 
 ### Added
