@@ -54,4 +54,56 @@ describe("LiquidityService", () => {
     const service = makeService();
     expect(() => service.getPool("USDC")).toThrow(ApiError);
   });
+
+  it("withdraws part of an anchor's balance", () => {
+    const service = makeService();
+    service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+    const entry = service.withdrawLiquidity({
+      anchor: "anchorA",
+      asset: "usdc",
+      amount: 40,
+    });
+
+    expect(entry.amount).toBe(60);
+    expect(service.getPool("USDC").total).toBe(60);
+  });
+
+  it("removes the entry once the full balance is withdrawn", () => {
+    const service = makeService();
+    service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+    const entry = service.withdrawLiquidity({
+      anchor: "anchorA",
+      asset: "USDC",
+      amount: 100,
+    });
+
+    expect(entry.amount).toBe(0);
+    expect(() => service.getPool("USDC")).toThrow(ApiError);
+  });
+
+  it("rejects withdrawing more than the available balance", () => {
+    const service = makeService();
+    service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+    expect(() =>
+      service.withdrawLiquidity({
+        anchor: "anchorA",
+        asset: "USDC",
+        amount: 150,
+      }),
+    ).toThrow(ApiError);
+  });
+
+  it("throws 404 when the anchor has no balance to withdraw", () => {
+    const service = makeService();
+    expect(() =>
+      service.withdrawLiquidity({
+        anchor: "anchorA",
+        asset: "USDC",
+        amount: 10,
+      }),
+    ).toThrow(ApiError);
+  });
 });
