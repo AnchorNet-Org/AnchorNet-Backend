@@ -41,6 +41,46 @@ export class LiquidityService {
     });
   }
 
+  /**
+   * Withdraws `amount` of liquidity previously contributed by `anchor` in
+   * `asset`, mirroring the on-chain contract's `withdraw_liquidity`. Reduces
+   * the anchor's balance and removes the entry once it reaches zero. Throws
+   * 404 if the anchor holds no balance in the asset, or 400
+   * (`INSUFFICIENT_LIQUIDITY`) if the withdrawal exceeds the balance.
+   */
+  withdrawLiquidity(input: {
+    anchor: unknown;
+    asset: unknown;
+    amount: unknown;
+  }): LiquidityEntry {
+    const anchor = requireString(input.anchor, "anchor");
+    const asset = normalizeAsset(input.asset);
+    const amount = requirePositiveNumber(input.amount, "amount");
+
+    const existing = this.repo.get(anchor, asset);
+    if (!existing) {
+      throw ApiError.notFound(
+        `no liquidity balance for anchor "${anchor}" in ${asset}`,
+      );
+    }
+    if (existing.amount < amount) {
+      throw ApiError.badRequest(
+        `insufficient balance for ${asset}: requested ${amount}, available ${existing.amount}`,
+        "INSUFFICIENT_LIQUIDITY",
+      );
+    }
+
+    const remaining = existing.amount - amount;
+    const updatedAt = new Date().toISOString();
+
+    if (remaining === 0) {
+      this.repo.remove(anchor, asset);
+      return { anchor, asset, amount: 0, updatedAt };
+    }
+
+    return this.repo.upsert({ anchor, asset, amount: remaining, updatedAt });
+  }
+
   /** Returns the aggregated pools for every asset. */
   listPools(): Pool[] {
     return this.repo.pools().sort((a, b) => a.asset.localeCompare(b.asset));
