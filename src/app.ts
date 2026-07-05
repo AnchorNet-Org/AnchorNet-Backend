@@ -24,6 +24,7 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { requestLogger } from "./middleware/requestLogger";
 import { requestId } from "./middleware/requestId";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
+import { rateLimiter } from "./middleware/rateLimiter";
 import { loadConfig } from "./config";
 
 export function createApp(): Express {
@@ -35,6 +36,7 @@ export function createApp(): Express {
   app.use(requestId);
   app.use(requestLogger);
   app.use(apiKeyAuth(config.apiKey));
+  app.use(rateLimiter());
 
   // Shared in-memory state and services for this process.
   const repo = new LiquidityRepository();
@@ -55,7 +57,7 @@ export function createApp(): Express {
   app.get("/api/v1/info", (_req: Request, res: Response) => {
     res.json({
       name: "AnchorNet API",
-      version: "0.2.0",
+      version: "0.3.0",
       description: "Liquidity coordination network for Stellar anchors",
     });
   });
