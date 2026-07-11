@@ -64,6 +64,42 @@ describe("anchor routes", () => {
     expect(res.status).toBe(404);
   });
 
+  it("partially updates an anchor's name", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/anchors")
+      .send({ id: "anchorA", name: "Old Name" });
+
+    const res = await request(app)
+      .patch("/api/v1/anchors/anchorA")
+      .send({ name: "New Name" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe("New Name");
+    expect(res.body.id).toBe("anchorA");
+
+    const one = await request(app).get("/api/v1/anchors/anchorA");
+    expect(one.body.name).toBe("New Name");
+  });
+
+  it("returns 404 patching an unknown anchor", async () => {
+    const res = await request(createApp())
+      .patch("/api/v1/anchors/missing")
+      .send({ name: "New Name" });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 patching an anchor without a name", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+
+    const res = await request(app).patch("/api/v1/anchors/anchorA").send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
+
   it("returns 404 for an unknown anchor", async () => {
     const app = createApp();
     const res = await request(app).get("/api/v1/anchors/missing");
