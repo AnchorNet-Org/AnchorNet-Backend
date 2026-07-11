@@ -74,6 +74,21 @@ export class AnchorService {
     return this.repo.upsert({ ...anchor, active: true });
   }
 
+  /**
+   * Partially updates an anchor's mutable display name. `id`, `registeredAt`
+   * and `active` are managed elsewhere (registration and (re)activation) and
+   * cannot be changed here. Throws 404 if unknown, or 400 if `name` is
+   * missing or blank.
+   */
+  update(idInput: unknown, input: { name?: unknown }): Anchor {
+    const anchor = this.get(idInput);
+    if (input.name === undefined) {
+      throw ApiError.badRequest('"name" must be provided to update an anchor');
+    }
+    const name = requireString(input.name, "name");
+    return this.repo.upsert({ ...anchor, name });
+  }
+
   /** Returns `true` if the anchor exists and is active. */
   isActive(id: string): boolean {
     return this.repo.get(id)?.active === true;
