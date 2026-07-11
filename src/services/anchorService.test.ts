@@ -41,6 +41,21 @@ describe("AnchorService", () => {
     expect(service.isActive("anchorA")).toBe(false);
   });
 
+  it("reactivates a deactivated anchor", () => {
+    const service = makeService();
+    service.register({ id: "anchorA" });
+    service.deregister("anchorA");
+
+    const updated = service.reactivate("anchorA");
+    expect(updated.active).toBe(true);
+    expect(service.isActive("anchorA")).toBe(true);
+  });
+
+  it("throws 404 reactivating an unknown anchor", () => {
+    const service = makeService();
+    expect(() => service.reactivate("missing")).toThrow(ApiError);
+  });
+
   it("returns every anchor when no status filter is given", () => {
     const service = makeService();
     service.register({ id: "anchorA" });
