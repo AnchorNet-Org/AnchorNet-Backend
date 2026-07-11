@@ -27,6 +27,7 @@ import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import { rateLimiter } from "./middleware/rateLimiter";
 import { securityHeaders } from "./middleware/securityHeaders";
 import { loadConfig } from "./config";
+import { buildOpenApiSpec } from "./openapi";
 
 export function createApp(): Express {
   const app = express();
@@ -62,6 +63,10 @@ export function createApp(): Express {
       version: "0.4.0",
       description: "Liquidity coordination network for Stellar anchors",
     });
+  });
+
+  app.get("/api/v1/openapi.json", (_req: Request, res: Response) => {
+    res.json(buildOpenApiSpec());
   });
 
   app.use("/api/v1/liquidity", liquidityRouter(liquidity));
