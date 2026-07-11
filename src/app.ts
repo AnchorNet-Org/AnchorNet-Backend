@@ -32,7 +32,7 @@ export function createApp(): Express {
   const app = express();
   const config = loadConfig();
 
-  app.use(cors());
+  app.use(cors(config.corsOrigins ? { origin: config.corsOrigins } : undefined));
   app.use(securityHeaders);
   app.use(express.json());
   app.use(requestId);
