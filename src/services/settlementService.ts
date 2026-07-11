@@ -110,9 +110,14 @@ export class SettlementService {
     return settlement;
   }
 
-  /** Returns all settlements, optionally filtered by anchor. */
-  list(anchor?: string): Settlement[] {
-    return anchor ? this.settlements.byAnchor(anchor) : this.settlements.all();
+  /** Returns all settlements, optionally filtered by anchor and/or asset. */
+  list(filters: { anchor?: string; asset?: string } = {}): Settlement[] {
+    const base = filters.anchor
+      ? this.settlements.byAnchor(filters.anchor)
+      : this.settlements.all();
+    return filters.asset
+      ? base.filter((s) => s.asset === filters.asset)
+      : base;
   }
 
   private requirePending(idInput: unknown): Settlement {

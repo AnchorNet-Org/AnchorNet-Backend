@@ -19,7 +19,7 @@ export function settlementRouter(service: SettlementService): Router {
   router.get("/", (req: Request, res: Response) => {
     const anchor =
       typeof req.query.anchor === "string" ? req.query.anchor : undefined;
-    const page = paginate(service.list(anchor), {
+    const page = paginate(service.list({ anchor }), {
       page: req.query.page,
       pageSize: req.query.pageSize,
     });
