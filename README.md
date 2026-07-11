@@ -44,6 +44,8 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 
 - `GET /health` – health check
 - `GET /api/v1/info` – API name and version
+- `GET /api/v1/openapi.json` – hand-maintained OpenAPI-shaped description of
+  every route below
 
 ### Liquidity
 
@@ -91,20 +93,29 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 
 - `GET /api/v1/metrics` – aggregate counts (anchors, pools, liquidity, settlements)
 
-Errors use a uniform envelope: `{ "error": { "code", "message" } }`. Every
-response carries an `x-request-id` header for tracing.
+Errors use a uniform envelope: `{ "error": { "code", "message" } }`, including
+malformed JSON (`400`) and oversized request bodies (`413`,
+`PAYLOAD_TOO_LARGE`). Every response carries an `x-request-id` header for
+tracing, plus a small set of defensive security headers (`X-Content-Type-Options`,
+`X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`, `X-DNS-Prefetch-Control`).
 
 Mutating requests (`POST`/`PUT`/`PATCH`/`DELETE`) are rate-limited per client
 IP (default 30 requests/minute, in-memory). Requests over the limit receive
 `429` with code `RATE_LIMITED`.
+
+The process shuts down gracefully on `SIGTERM`/`SIGINT`: it stops accepting
+new connections, closes the HTTP server, and force-exits if it hasn't closed
+within 10 seconds.
 
 ## Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3001` | HTTP port |
-| `FEE_BPS` | `10` | Protocol fee in basis points |
+| `FEE_BPS` | `10` | Protocol fee in basis points; must be `0`-`10000` or the process fails to start |
 | `API_KEY` | – | If set, mutating requests must send `x-api-key` |
+| `CORS_ORIGIN` | – | Comma-separated allowlist of origins; unset allows any origin |
+| `BODY_LIMIT` | `100kb` | Maximum accepted JSON request body size (`express.json` `limit` syntax) |
 | `NODE_ENV` | `development` | Environment name |
 
 ### Architecture
