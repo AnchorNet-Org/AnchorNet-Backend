@@ -7,7 +7,7 @@
  * summary per operation over a fully-typed OpenAPI document with schemas.
  */
 
-const PKG_VERSION = "0.5.0";
+const PKG_VERSION = "0.6.0";
 
 export function buildOpenApiSpec(): Record<string, unknown> {
   return {

@@ -1,6 +1,6 @@
 {
   "name": "anchornet-backend",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "AnchorNet API – routing, settlement, liquidity indexer",
   "main": "dist/index.js",
   "scripts": {
