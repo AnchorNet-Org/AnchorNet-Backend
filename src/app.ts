@@ -25,6 +25,7 @@ import { requestLogger } from "./middleware/requestLogger";
 import { requestId } from "./middleware/requestId";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import { rateLimiter } from "./middleware/rateLimiter";
+import { securityHeaders } from "./middleware/securityHeaders";
 import { loadConfig } from "./config";
 
 export function createApp(): Express {
@@ -32,6 +33,7 @@ export function createApp(): Express {
   const config = loadConfig();
 
   app.use(cors());
+  app.use(securityHeaders);
   app.use(express.json());
   app.use(requestId);
   app.use(requestLogger);
