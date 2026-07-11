@@ -74,4 +74,23 @@ describe("settlement routes", () => {
     expect(res.status).toBe(200);
     expect(res.body.settlements).toHaveLength(1);
   });
+
+  it("filters settlements by asset", async () => {
+    const app = createApp();
+    await setup(app);
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+    const matching = await request(app).get(
+      "/api/v1/settlements?asset=usdc",
+    );
+    expect(matching.status).toBe(200);
+    expect(matching.body.settlements).toHaveLength(1);
+
+    const nonMatching = await request(app).get(
+      "/api/v1/settlements?asset=EURC",
+    );
+    expect(nonMatching.body.settlements).toHaveLength(0);
+  });
 });
