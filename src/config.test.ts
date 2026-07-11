@@ -31,4 +31,17 @@ describe("loadConfig", () => {
     const config = loadConfig({ API_KEY: "   " });
     expect(config.apiKey).toBeUndefined();
   });
+
+  it("throws when FEE_BPS is negative", () => {
+    expect(() => loadConfig({ FEE_BPS: "-1" })).toThrow(/FEE_BPS/);
+  });
+
+  it("throws when FEE_BPS exceeds 10000", () => {
+    expect(() => loadConfig({ FEE_BPS: "10001" })).toThrow(/FEE_BPS/);
+  });
+
+  it("accepts the boundary FEE_BPS values", () => {
+    expect(loadConfig({ FEE_BPS: "0" }).feeBps).toBe(0);
+    expect(loadConfig({ FEE_BPS: "10000" }).feeBps).toBe(10000);
+  });
 });
