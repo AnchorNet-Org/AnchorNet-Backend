@@ -13,6 +13,7 @@ describe("openapi spec", () => {
     expect(spec.paths).toHaveProperty("/api/v1/liquidity/withdraw");
     expect(spec.paths).toHaveProperty("/api/v1/quote");
     expect(spec.paths).toHaveProperty("/api/v1/metrics");
+    expect(spec.paths).toHaveProperty("/api/v1/metrics/history");
   });
 
   it("serves the spec over GET /api/v1/openapi.json", async () => {

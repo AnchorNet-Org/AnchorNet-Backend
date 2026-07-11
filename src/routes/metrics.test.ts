@@ -36,4 +36,27 @@ describe("metrics route", () => {
     expect(res.body.settlements).toBe(1);
     expect(res.body.pendingSettlements).toBe(1);
   });
+
+  it("starts with no metrics history", async () => {
+    const res = await request(createApp()).get("/api/v1/metrics/history");
+    expect(res.status).toBe(200);
+    expect(res.body.snapshots).toEqual([]);
+  });
+
+  it("records a snapshot on every read of the current metrics", async () => {
+    const app = createApp();
+    await seed(app);
+
+    await request(app).get("/api/v1/metrics");
+    await request(app).get("/api/v1/metrics");
+
+    const res = await request(app).get("/api/v1/metrics/history");
+    expect(res.status).toBe(200);
+    expect(res.body.snapshots).toHaveLength(2);
+    expect(res.body.snapshots[0]).toMatchObject({
+      anchors: 1,
+      settlements: 1,
+    });
+    expect(typeof res.body.snapshots[0].timestamp).toBe("string");
+  });
 });
