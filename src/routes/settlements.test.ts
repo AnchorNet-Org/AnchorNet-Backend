@@ -93,4 +93,39 @@ describe("settlement routes", () => {
     );
     expect(nonMatching.body.settlements).toHaveLength(0);
   });
+
+  it("sorts settlements by amount", async () => {
+    const app = createApp();
+    await setup(app);
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 300 });
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+    const asc = await request(app).get(
+      "/api/v1/settlements?sort=amount&order=asc",
+    );
+    expect(asc.status).toBe(200);
+    expect(asc.body.settlements.map((s: { amount: number }) => s.amount)).toEqual(
+      [100, 300],
+    );
+
+    const desc = await request(app).get(
+      "/api/v1/settlements?sort=amount&order=desc",
+    );
+    expect(desc.body.settlements.map((s: { amount: number }) => s.amount)).toEqual(
+      [300, 100],
+    );
+  });
+
+  it("returns 400 for an unknown sort field", async () => {
+    const app = createApp();
+    await setup(app);
+
+    const res = await request(app).get("/api/v1/settlements?sort=bogus");
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
 });
