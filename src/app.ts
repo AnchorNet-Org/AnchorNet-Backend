@@ -34,7 +34,7 @@ export function createApp(): Express {
 
   app.use(cors(config.corsOrigins ? { origin: config.corsOrigins } : undefined));
   app.use(securityHeaders);
-  app.use(express.json());
+  app.use(express.json({ limit: config.bodyLimit }));
   app.use(requestId);
   app.use(requestLogger);
   app.use(apiKeyAuth(config.apiKey));

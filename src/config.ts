@@ -14,9 +14,13 @@ export interface Config {
    * every origin is permitted (the historical default behavior).
    */
   corsOrigins?: string[];
+  /** Maximum accepted JSON request body size, as an `express.json` `limit` string. */
+  bodyLimit: string;
   /** Current environment name. */
   env: string;
 }
+
+const DEFAULT_BODY_LIMIT = "100kb";
 
 function intFromEnv(value: string | undefined, fallback: number): number {
   if (value === undefined) return fallback;
@@ -59,6 +63,7 @@ export function loadConfig(
     feeBps,
     apiKey: apiKey ? apiKey : undefined,
     corsOrigins: parseCorsOrigins(env.CORS_ORIGIN),
+    bodyLimit: env.BODY_LIMIT?.trim() || DEFAULT_BODY_LIMIT,
     env: env.NODE_ENV ?? "development",
   };
 }
