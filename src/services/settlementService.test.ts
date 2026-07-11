@@ -97,4 +97,24 @@ describe("SettlementService", () => {
     const { service } = harness(1000);
     expect(() => service.get(999)).toThrow(ApiError);
   });
+
+  it("filters settlements by asset", () => {
+    const { service } = harness(1000);
+    service.open({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+    expect(service.list({ asset: "USDC" })).toHaveLength(1);
+    expect(service.list({ asset: "EURC" })).toHaveLength(0);
+  });
+
+  it("combines anchor and asset filters", () => {
+    const { service } = harness(1000);
+    service.open({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+    expect(service.list({ anchor: "anchorA", asset: "USDC" })).toHaveLength(
+      1,
+    );
+    expect(service.list({ anchor: "anchorA", asset: "EURC" })).toHaveLength(
+      0,
+    );
+  });
 });
