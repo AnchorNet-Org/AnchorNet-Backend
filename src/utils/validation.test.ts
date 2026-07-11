@@ -1,5 +1,6 @@
 import {
   normalizeAsset,
+  requirePositiveInteger,
   requirePositiveNumber,
   requireString,
 } from "./validation";
@@ -58,6 +59,38 @@ describe("requirePositiveNumber", () => {
 
   it("rejects a non-number value", () => {
     expect(() => requirePositiveNumber("5", "amount")).toThrow(ApiError);
+  });
+});
+
+describe("requirePositiveInteger", () => {
+  it("coerces a numeric string to a number", () => {
+    expect(requirePositiveInteger("42", "id")).toBe(42);
+  });
+
+  it("returns a positive integer unchanged", () => {
+    expect(requirePositiveInteger(7, "id")).toBe(7);
+  });
+
+  it("rejects zero", () => {
+    expect(() => requirePositiveInteger(0, "id")).toThrow(ApiError);
+  });
+
+  it("rejects a negative integer", () => {
+    expect(() => requirePositiveInteger(-3, "id")).toThrow(ApiError);
+  });
+
+  it("rejects a fractional value", () => {
+    expect(() => requirePositiveInteger(1.5, "id")).toThrow(ApiError);
+  });
+
+  it("rejects a non-numeric string", () => {
+    expect(() => requirePositiveInteger("abc", "id")).toThrow(ApiError);
+  });
+
+  it("includes the field name in the error message", () => {
+    expect(() => requirePositiveInteger("abc", "id")).toThrow(
+      /"id" must be a positive integer/,
+    );
   });
 });
 
