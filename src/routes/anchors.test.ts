@@ -97,4 +97,27 @@ describe("anchor routes", () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("BAD_REQUEST");
   });
+
+  it("sorts anchors by id in descending order", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+    await request(app).post("/api/v1/anchors").send({ id: "anchorB" });
+
+    const res = await request(app).get(
+      "/api/v1/anchors?sort=id&order=desc",
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.anchors.map((a: { id: string }) => a.id)).toEqual([
+      "anchorB",
+      "anchorA",
+    ]);
+  });
+
+  it("returns 400 for an unknown sort field", async () => {
+    const app = createApp();
+    const res = await request(app).get("/api/v1/anchors?sort=bogus");
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
 });
