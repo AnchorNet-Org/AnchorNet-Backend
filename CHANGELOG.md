@@ -2,6 +2,18 @@
 
 All notable changes to the AnchorNet API are documented here.
 
+## [0.4.0]
+
+### Added
+
+- **Anchors:** `POST /api/v1/anchors/:id/reactivate` to reverse a
+  deactivation without re-registering the anchor.
+- **Settlements:** `?asset=` filter on `GET /api/v1/settlements`, composable
+  with the existing `?anchor=` filter.
+- **Sorting:** `?sort=`/`?order=` on `GET /api/v1/anchors` (`id`, `name`,
+  `registeredAt`) and `GET /api/v1/settlements` (`id`, `amount`, `fee`,
+  `status`, `createdAt`), backed by a new generic `applySort` utility.
+
 ## [0.3.0]
 
 ### Added
