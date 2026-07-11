@@ -2,6 +2,31 @@
 
 All notable changes to the AnchorNet API are documented here.
 
+## [0.5.0]
+
+### Added
+
+- **Service:** `GET /api/v1/openapi.json`, a hand-maintained OpenAPI-shaped
+  description of every route.
+- **Middleware:** hand-rolled security headers (`X-Content-Type-Options`,
+  `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`,
+  `X-DNS-Prefetch-Control`) applied to every response.
+- **Configuration:** `CORS_ORIGIN` to restrict cross-origin requests to a
+  comma-separated allowlist (unset keeps the previous permissive default);
+  `BODY_LIMIT` to cap accepted JSON request body size (default `100kb`).
+- **Process:** graceful shutdown on `SIGTERM`/`SIGINT` — stops accepting new
+  connections, closes the HTTP server, and force-exits after a 10s timeout.
+
+### Changed
+
+- **Configuration:** `FEE_BPS` is now validated at startup; the process fails
+  fast if it falls outside `0`-`10000`.
+
+### Fixed
+
+- **Errors:** malformed JSON and oversized request bodies now return the
+  standard error envelope (`400`/`413`) instead of a generic `500`.
+
 ## [0.4.0]
 
 ### Added
