@@ -21,6 +21,18 @@ export function requirePositiveNumber(value: unknown, field: string): number {
   return value;
 }
 
+/**
+ * Coerces `value` to a number and ensures it is a positive integer (e.g. a
+ * resource id from a route param), returning the parsed number.
+ */
+export function requirePositiveInteger(value: unknown, field: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw ApiError.badRequest(`"${field}" must be a positive integer`);
+  }
+  return parsed;
+}
+
 /** Normalizes an asset code to upper case (e.g. "usdc" -> "USDC"). */
 export function normalizeAsset(value: unknown): string {
   return requireString(value, "asset").toUpperCase();

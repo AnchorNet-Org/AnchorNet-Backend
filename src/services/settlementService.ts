@@ -18,6 +18,7 @@ import { Settlement } from "../models/settlement";
 import { ApiError } from "../errors/ApiError";
 import {
   normalizeAsset,
+  requirePositiveInteger,
   requirePositiveNumber,
   requireString,
 } from "../utils/validation";
@@ -132,10 +133,6 @@ export class SettlementService {
   }
 
   private parseId(idInput: unknown): number {
-    const id = Number(idInput);
-    if (!Number.isInteger(id) || id <= 0) {
-      throw ApiError.badRequest(`"id" must be a positive integer`);
-    }
-    return id;
+    return requirePositiveInteger(idInput, "id");
   }
 }
