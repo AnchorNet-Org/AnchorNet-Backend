@@ -8,7 +8,13 @@
  * (or restart) the shutdown path.
  */
 
-import { Server } from "node:http";
+/**
+ * The minimal server shape this helper depends on, rather than the full
+ * `http.Server` type, so tests can pass a lightweight fake.
+ */
+export interface CloseableServer {
+  close(callback?: (err?: Error) => void): unknown;
+}
 
 export interface ShutdownOptions {
   /** Milliseconds to wait for the server to close before forcing exit. Default 10s. */
@@ -26,7 +32,7 @@ const DEFAULT_TIMEOUT_MS = 10_000;
  * `process.on("SIGTERM", ...)` / `process.on("SIGINT", ...)`.
  */
 export function createShutdownHandler(
-  server: Pick<Server, "close">,
+  server: CloseableServer,
   options: ShutdownOptions = {},
 ): (signal: string) => void {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
