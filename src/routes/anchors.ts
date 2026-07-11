@@ -29,5 +29,10 @@ export function anchorRouter(service: AnchorService): Router {
     res.json(service.deregister(req.params.id));
   });
 
+  // Reactivate a previously deactivated anchor.
+  router.post("/:id/reactivate", (req: Request, res: Response) => {
+    res.json(service.reactivate(req.params.id));
+  });
+
   return router;
 }
