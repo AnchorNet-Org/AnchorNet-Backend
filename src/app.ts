@@ -26,6 +26,7 @@ import { requestId } from "./middleware/requestId";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import { rateLimiter } from "./middleware/rateLimiter";
 import { securityHeaders } from "./middleware/securityHeaders";
+import { idempotency } from "./middleware/idempotency";
 import { loadConfig } from "./config";
 import { buildOpenApiSpec } from "./openapi";
 
@@ -40,6 +41,7 @@ export function createApp(): Express {
   app.use(requestLogger);
   app.use(apiKeyAuth(config.apiKey));
   app.use(rateLimiter());
+  app.use(idempotency());
 
   // Shared in-memory state and services for this process.
   const repo = new LiquidityRepository();
