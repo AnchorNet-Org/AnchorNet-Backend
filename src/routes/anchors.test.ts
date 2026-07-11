@@ -45,6 +45,25 @@ describe("anchor routes", () => {
     expect(res.body.active).toBe(false);
   });
 
+  it("reactivates a deactivated anchor", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+    await request(app).delete("/api/v1/anchors/anchorA");
+
+    const res = await request(app).post(
+      "/api/v1/anchors/anchorA/reactivate",
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.active).toBe(true);
+  });
+
+  it("returns 404 reactivating an unknown anchor", async () => {
+    const res = await request(createApp()).post(
+      "/api/v1/anchors/missing/reactivate",
+    );
+    expect(res.status).toBe(404);
+  });
+
   it("returns 404 for an unknown anchor", async () => {
     const app = createApp();
     const res = await request(app).get("/api/v1/anchors/missing");
