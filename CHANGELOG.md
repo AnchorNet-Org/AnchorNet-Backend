@@ -2,6 +2,28 @@
 
 All notable changes to the AnchorNet API are documented here.
 
+## [0.6.0]
+
+### Added
+
+- **Middleware:** `Idempotency-Key` header support for mutating requests —
+  the first request for a given key/method/path runs normally and its
+  response is cached; a retried request reusing the same key (within 24h)
+  replays the original response instead of re-running the handler.
+- **Anchors:** `PATCH /api/v1/anchors/:id` to partially update an anchor's
+  mutable `name` (`404` if unknown, `400` if `name` is missing or blank).
+- **Metrics:** `GET /api/v1/metrics/history`, a rolling in-memory history of
+  the last 50 metrics snapshots (oldest first), backed by a new generic
+  `BoundedHistory` buffer utility. Each read of `GET /api/v1/metrics` records
+  a new snapshot.
+- **Utilities:** `requirePositiveInteger` validation helper, now shared by
+  the settlement id parsing that previously duplicated the same check.
+
+### Changed
+
+- **Docs:** `src/openapi.ts` now documents the anchor patch and metrics
+  history endpoints.
+
 ## [0.5.0]
 
 ### Added
