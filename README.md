@@ -74,6 +74,8 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
   `?status=inactive` (`400` for any other value), and `?sort=id|name|registeredAt`
   with `?order=asc|desc` (default `asc`)
 - `GET /api/v1/anchors/:id` – read one anchor (`404` if unknown)
+- `PATCH /api/v1/anchors/:id` – partially update an anchor's mutable `name`
+  (`404` if unknown, `400` if `name` is missing or blank)
 - `DELETE /api/v1/anchors/:id` – deactivate an anchor
 - `POST /api/v1/anchors/:id/reactivate` – reactivate a previously deactivated
   anchor (`404` if unknown)
@@ -91,7 +93,11 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 
 ### Metrics
 
-- `GET /api/v1/metrics` – aggregate counts (anchors, pools, liquidity, settlements)
+- `GET /api/v1/metrics` – aggregate counts (anchors, pools, liquidity,
+  settlements). Each read also appends a timestamped snapshot to an in-memory
+  rolling history (last 50 reads).
+- `GET /api/v1/metrics/history` – the recorded metrics snapshots, oldest first
+  (`{ snapshots: [...] }`)
 
 Errors use a uniform envelope: `{ "error": { "code", "message" } }`, including
 malformed JSON (`400`) and oversized request bodies (`413`,
@@ -102,6 +108,13 @@ tracing, plus a small set of defensive security headers (`X-Content-Type-Options
 Mutating requests (`POST`/`PUT`/`PATCH`/`DELETE`) are rate-limited per client
 IP (default 30 requests/minute, in-memory). Requests over the limit receive
 `429` with code `RATE_LIMITED`.
+
+Mutating requests may also send an `Idempotency-Key` header. The first request
+for a given key/method/path runs normally and its response is cached; any
+later request reusing the same key (within 24h) replays the original response
+instead of re-running the handler, so retried requests don't double-apply
+side effects (e.g. registering the same anchor twice). State is in-memory and
+per-process.
 
 The process shuts down gracefully on `SIGTERM`/`SIGINT`: it stops accepting
 new connections, closes the HTTP server, and force-exits if it hasn't closed
