@@ -62,4 +62,16 @@ describe("loadConfig", () => {
   it("treats a blank CORS_ORIGIN as unset", () => {
     expect(loadConfig({ CORS_ORIGIN: "  ,  " }).corsOrigins).toBeUndefined();
   });
+
+  it("defaults the JSON body size limit to 100kb", () => {
+    expect(loadConfig({}).bodyLimit).toBe("100kb");
+  });
+
+  it("reads a configured JSON body size limit", () => {
+    expect(loadConfig({ BODY_LIMIT: "1mb" }).bodyLimit).toBe("1mb");
+  });
+
+  it("falls back to the default body limit for a blank value", () => {
+    expect(loadConfig({ BODY_LIMIT: "   " }).bodyLimit).toBe("100kb");
+  });
 });
