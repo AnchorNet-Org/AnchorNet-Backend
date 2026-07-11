@@ -44,4 +44,22 @@ describe("loadConfig", () => {
     expect(loadConfig({ FEE_BPS: "0" }).feeBps).toBe(0);
     expect(loadConfig({ FEE_BPS: "10000" }).feeBps).toBe(10000);
   });
+
+  it("leaves the CORS allowlist undefined when unset", () => {
+    expect(loadConfig({}).corsOrigins).toBeUndefined();
+  });
+
+  it("parses a comma-separated CORS_ORIGIN allowlist", () => {
+    const config = loadConfig({
+      CORS_ORIGIN: "https://a.example, https://b.example",
+    });
+    expect(config.corsOrigins).toEqual([
+      "https://a.example",
+      "https://b.example",
+    ]);
+  });
+
+  it("treats a blank CORS_ORIGIN as unset", () => {
+    expect(loadConfig({ CORS_ORIGIN: "  ,  " }).corsOrigins).toBeUndefined();
+  });
 });
