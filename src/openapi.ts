@@ -86,6 +86,9 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       "/api/v1/metrics": {
         get: { summary: "Aggregate network metrics" },
       },
+      "/api/v1/metrics/history": {
+        get: { summary: "Recent aggregate metrics snapshots, oldest first" },
+      },
     },
   };
 }
