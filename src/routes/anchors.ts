@@ -33,6 +33,11 @@ export function anchorRouter(service: AnchorService): Router {
     res.json(service.get(req.params.id));
   });
 
+  // Partially update an anchor's mutable fields (currently just `name`).
+  router.patch("/:id", (req: Request, res: Response) => {
+    res.json(service.update(req.params.id, req.body ?? {}));
+  });
+
   // Deactivate an anchor.
   router.delete("/:id", (req: Request, res: Response) => {
     res.json(service.deregister(req.params.id));

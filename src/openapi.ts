@@ -52,6 +52,7 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       },
       "/api/v1/anchors/{id}": {
         get: { summary: "Read one anchor" },
+        patch: { summary: "Partially update an anchor's name" },
         delete: { summary: "Deactivate an anchor" },
       },
       "/api/v1/anchors/{id}/reactivate": {
