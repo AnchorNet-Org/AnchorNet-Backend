@@ -5,6 +5,9 @@
 import { Router, Request, Response } from "express";
 import { SettlementService } from "../services/settlementService";
 import { paginate } from "../utils/pagination";
+import { applySort } from "../utils/sorting";
+
+const SORTABLE_FIELDS = ["id", "amount", "fee", "status", "createdAt"];
 
 export function settlementRouter(service: SettlementService): Router {
   const router = Router();
@@ -14,8 +17,8 @@ export function settlementRouter(service: SettlementService): Router {
     res.status(201).json(service.open(req.body ?? {}));
   });
 
-  // List settlements, optionally filtered by ?anchor= and ?asset=, and
-  // paginated via ?page= and ?pageSize=.
+  // List settlements, optionally filtered by ?anchor= and ?asset=, sorted via
+  // ?sort= and ?order=, and paginated via ?page= and ?pageSize=.
   router.get("/", (req: Request, res: Response) => {
     const anchor =
       typeof req.query.anchor === "string" ? req.query.anchor : undefined;
@@ -23,7 +26,12 @@ export function settlementRouter(service: SettlementService): Router {
       typeof req.query.asset === "string"
         ? req.query.asset.toUpperCase()
         : undefined;
-    const page = paginate(service.list({ anchor, asset }), {
+    const sorted = applySort(
+      service.list({ anchor, asset }),
+      { sort: req.query.sort, order: req.query.order },
+      SORTABLE_FIELDS,
+    );
+    const page = paginate(sorted, {
       page: req.query.page,
       pageSize: req.query.pageSize,
     });

@@ -15,7 +15,7 @@ export interface SortQuery {
  * Returns `items` unchanged when no `sort` is given. Throws a 400 for an
  * unknown field or an `order` other than `"asc"`/`"desc"`.
  */
-export function applySort<T extends Record<string, unknown>>(
+export function applySort<T>(
   items: T[],
   query: SortQuery,
   allowedFields: readonly string[],
@@ -38,8 +38,8 @@ export function applySort<T extends Record<string, unknown>>(
   const direction = orderInput === "asc" ? 1 : -1;
 
   return [...items].sort((a, b) => {
-    const av = a[field];
-    const bv = b[field];
+    const av = (a as Record<string, unknown>)[field];
+    const bv = (b as Record<string, unknown>)[field];
     if (typeof av === "number" && typeof bv === "number") {
       return (av - bv) * direction;
     }
