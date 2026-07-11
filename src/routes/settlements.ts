@@ -14,12 +14,16 @@ export function settlementRouter(service: SettlementService): Router {
     res.status(201).json(service.open(req.body ?? {}));
   });
 
-  // List settlements, optionally filtered by ?anchor= and paginated via
-  // ?page= and ?pageSize=.
+  // List settlements, optionally filtered by ?anchor= and ?asset=, and
+  // paginated via ?page= and ?pageSize=.
   router.get("/", (req: Request, res: Response) => {
     const anchor =
       typeof req.query.anchor === "string" ? req.query.anchor : undefined;
-    const page = paginate(service.list({ anchor }), {
+    const asset =
+      typeof req.query.asset === "string"
+        ? req.query.asset.toUpperCase()
+        : undefined;
+    const page = paginate(service.list({ anchor, asset }), {
       page: req.query.page,
       pageSize: req.query.pageSize,
     });
