@@ -69,16 +69,20 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 
 - `POST /api/v1/anchors` – register an anchor `{ id, name? }` (`409` if it exists)
 - `GET /api/v1/anchors` – list anchors; supports `?status=active` or
-  `?status=inactive` (`400` for any other value)
+  `?status=inactive` (`400` for any other value), and `?sort=id|name|registeredAt`
+  with `?order=asc|desc` (default `asc`)
 - `GET /api/v1/anchors/:id` – read one anchor (`404` if unknown)
 - `DELETE /api/v1/anchors/:id` – deactivate an anchor
+- `POST /api/v1/anchors/:id/reactivate` – reactivate a previously deactivated
+  anchor (`404` if unknown)
 
 ### Settlements
 
 - `POST /api/v1/settlements` – open a settlement `{ anchor, asset, amount }`,
   reserving liquidity. Returns `201` with the pending settlement.
-- `GET /api/v1/settlements` – list settlements; supports `?anchor=`, `?page=`,
-  `?pageSize=`
+- `GET /api/v1/settlements` – list settlements; supports `?anchor=`, `?asset=`,
+  `?sort=id|amount|fee|status|createdAt` with `?order=asc|desc` (default
+  `asc`), `?page=`, `?pageSize=`
 - `GET /api/v1/settlements/:id` – read one settlement
 - `POST /api/v1/settlements/:id/execute` – execute a pending settlement
 - `POST /api/v1/settlements/:id/cancel` – cancel and release reserved liquidity
