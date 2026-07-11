@@ -4,6 +4,9 @@
 
 import { Router, Request, Response } from "express";
 import { AnchorService } from "../services/anchorService";
+import { applySort } from "../utils/sorting";
+
+const SORTABLE_FIELDS = ["id", "name", "registeredAt"];
 
 export function anchorRouter(service: AnchorService): Router {
   const router = Router();
@@ -14,9 +17,15 @@ export function anchorRouter(service: AnchorService): Router {
     res.status(201).json(anchor);
   });
 
-  // List anchors, optionally filtered via ?status=active|inactive.
+  // List anchors, optionally filtered via ?status=active|inactive and sorted
+  // via ?sort=id|name|registeredAt and ?order=asc|desc.
   router.get("/", (req: Request, res: Response) => {
-    res.json({ anchors: service.list(req.query.status) });
+    const anchors = applySort(
+      service.list(req.query.status),
+      { sort: req.query.sort, order: req.query.order },
+      SORTABLE_FIELDS,
+    );
+    res.json({ anchors });
   });
 
   // Read a single anchor by id.
