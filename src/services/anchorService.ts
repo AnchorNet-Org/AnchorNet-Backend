@@ -65,6 +65,15 @@ export class AnchorService {
     return this.repo.upsert({ ...anchor, active: false });
   }
 
+  /**
+   * Reactivates a previously deactivated anchor. Returns the updated record,
+   * or 404 if unknown. Reactivating an already-active anchor is a no-op.
+   */
+  reactivate(idInput: unknown): Anchor {
+    const anchor = this.get(idInput);
+    return this.repo.upsert({ ...anchor, active: true });
+  }
+
   /** Returns `true` if the anchor exists and is active. */
   isActive(id: string): boolean {
     return this.repo.get(id)?.active === true;
