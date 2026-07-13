@@ -16,6 +16,8 @@ export interface Config {
   corsOrigins?: string[];
   /** Maximum accepted JSON request body size, as an `express.json` `limit` string. */
   bodyLimit: string;
+  /** When `true`, mutating requests are rejected with 503 while reads still work. */
+  maintenanceMode: boolean;
   /** Current environment name. */
   env: string;
 }
@@ -45,6 +47,12 @@ function parseCorsOrigins(value: string | undefined): string[] | undefined {
 const MIN_FEE_BPS = 0;
 const MAX_FEE_BPS = 10_000;
 
+/** Parses a `MAINTENANCE_MODE` env value as a boolean; `"1"`/`"true"` (case-insensitive) enable it. */
+function parseBooleanFlag(value: string | undefined): boolean {
+  if (value === undefined) return false;
+  return value.trim().toLowerCase() === "1" || value.trim().toLowerCase() === "true";
+}
+
 /** Builds the {@link Config} from `process.env`, applying sensible defaults. */
 export function loadConfig(
   env: Record<string, string | undefined> = process.env,
@@ -64,6 +72,7 @@ export function loadConfig(
     apiKey: apiKey ? apiKey : undefined,
     corsOrigins: parseCorsOrigins(env.CORS_ORIGIN),
     bodyLimit: env.BODY_LIMIT?.trim() || DEFAULT_BODY_LIMIT,
+    maintenanceMode: parseBooleanFlag(env.MAINTENANCE_MODE),
     env: env.NODE_ENV ?? "development",
   };
 }
