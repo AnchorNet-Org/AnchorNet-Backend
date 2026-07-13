@@ -17,6 +17,12 @@ export function anchorRouter(service: AnchorService): Router {
     res.status(201).json(anchor);
   });
 
+  // Register a batch of anchors atomically.
+  router.post("/bulk", (req: Request, res: Response) => {
+    const anchors = service.registerBulk((req.body ?? {}).anchors);
+    res.status(201).json({ anchors });
+  });
+
   // List anchors, optionally filtered via ?status=active|inactive and sorted
   // via ?sort=id|name|registeredAt and ?order=asc|desc.
   router.get("/", (req: Request, res: Response) => {
