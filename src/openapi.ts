@@ -33,6 +33,12 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       "/api/v1/info": {
         get: { summary: "API name and version" },
       },
+      "/api/v1/audit": {
+        get: {
+          summary:
+            "Recent mutating requests (method, path, status, request id, timestamp)",
+        },
+      },
       "/api/v1/liquidity": {
         post: {
           summary:
