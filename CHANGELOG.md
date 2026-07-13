@@ -2,6 +2,21 @@
 
 All notable changes to the AnchorNet API are documented here.
 
+## [0.9.0]
+
+### Added
+
+- **Operations:** `GET /api/v1/audit` — the most recent mutating requests
+  (method, path, status, request id, timestamp), kept in a bounded in-memory
+  buffer (last 200), backed by a new `createAuditLog` middleware.
+
+### Fixed
+
+- The audit log initially read `req.path` lazily inside the response
+  `finish` handler, which could capture the mount-relative path left behind
+  by Express's sub-router dispatch instead of the full request path; it now
+  snapshots the method/path synchronously before calling `next()`.
+
 ## [0.8.0]
 
 ### Added
