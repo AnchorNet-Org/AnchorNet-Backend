@@ -195,6 +195,21 @@ describe("anchor routes", () => {
     expect(res.body.error.code).toBe("BAD_REQUEST");
   });
 
+  it("searches the anchor list via ?q=", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/anchors")
+      .send({ id: "stellar-anchor", name: "Stellar Vault" });
+    await request(app).post("/api/v1/anchors").send({ id: "other" });
+
+    const res = await request(app).get("/api/v1/anchors?q=stellar");
+
+    expect(res.status).toBe(200);
+    expect(res.body.anchors.map((a: { id: string }) => a.id)).toEqual([
+      "stellar-anchor",
+    ]);
+  });
+
   it("exports the anchor list as CSV via ?format=csv", async () => {
     const app = createApp();
     const registered = await request(app)
