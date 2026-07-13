@@ -21,6 +21,15 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       "/health": {
         get: { summary: "Health check" },
       },
+      "/health/live": {
+        get: { summary: "Liveness probe (always 200 while the process is up)" },
+      },
+      "/health/ready": {
+        get: {
+          summary:
+            "Readiness probe (503 once graceful shutdown has begun)",
+        },
+      },
       "/api/v1/info": {
         get: { summary: "API name and version" },
       },

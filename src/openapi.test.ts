@@ -6,6 +6,8 @@ describe("openapi spec", () => {
   it("describes the anchors, settlements, liquidity, quote and metrics routes", () => {
     const spec = buildOpenApiSpec() as { paths: Record<string, unknown> };
 
+    expect(spec.paths).toHaveProperty("/health/live");
+    expect(spec.paths).toHaveProperty("/health/ready");
     expect(spec.paths).toHaveProperty("/api/v1/anchors");
     expect(spec.paths).toHaveProperty("/api/v1/anchors/{id}/reactivate");
     expect(spec.paths).toHaveProperty("/api/v1/settlements");
