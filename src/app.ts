@@ -7,6 +7,7 @@
 
 import express, { Express, Request, Response } from "express";
 import cors from "cors";
+import compression from "compression";
 
 import { LiquidityRepository } from "./repositories/liquidityRepository";
 import { AnchorRepository } from "./repositories/anchorRepository";
@@ -36,6 +37,7 @@ export function createApp(): Express {
   const config = loadConfig();
 
   app.use(cors(config.corsOrigins ? { origin: config.corsOrigins } : undefined));
+  app.use(compression());
   app.use(securityHeaders);
   app.use(express.json({ limit: config.bodyLimit }));
   app.use(requestId);
