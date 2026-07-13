@@ -2,6 +2,19 @@
 
 All notable changes to the AnchorNet API are documented here.
 
+## [0.8.0]
+
+### Added
+
+- **Anchors:** `?q=` free-text search (case-insensitive substring over
+  `id`/`name`) and `?format=csv` export on `GET /api/v1/anchors`.
+- **Settlements:** optional `{ reason }` on `POST /api/v1/settlements/:id/cancel`,
+  recorded as `cancelReason`; `?format=csv` export on `GET /api/v1/settlements`
+  (ignores pagination, exports every matching sorted row).
+- **Rate limiting:** `POST /api/v1/quote` now has an additional, stricter
+  limit (10/minute) on top of the general per-client default.
+- **Utilities:** `toCsv` minimal CSV serialization helper.
+
 ## [0.7.0]
 
 ### Added
