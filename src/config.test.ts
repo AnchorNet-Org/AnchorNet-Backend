@@ -74,4 +74,26 @@ describe("loadConfig", () => {
   it("falls back to the default body limit for a blank value", () => {
     expect(loadConfig({ BODY_LIMIT: "   " }).bodyLimit).toBe("100kb");
   });
+
+  it("defaults maintenance mode to disabled", () => {
+    expect(loadConfig({}).maintenanceMode).toBe(false);
+  });
+
+  it.each(["1", "true", "TRUE", " true "])(
+    "enables maintenance mode for MAINTENANCE_MODE=%p",
+    (value) => {
+      expect(loadConfig({ MAINTENANCE_MODE: value }).maintenanceMode).toBe(
+        true,
+      );
+    },
+  );
+
+  it.each(["0", "false", "", undefined])(
+    "leaves maintenance mode disabled for MAINTENANCE_MODE=%p",
+    (value) => {
+      expect(
+        loadConfig({ MAINTENANCE_MODE: value }).maintenanceMode,
+      ).toBe(false);
+    },
+  );
 });
