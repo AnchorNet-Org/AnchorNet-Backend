@@ -28,6 +28,7 @@ import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import { rateLimiter } from "./middleware/rateLimiter";
 import { securityHeaders } from "./middleware/securityHeaders";
 import { idempotency } from "./middleware/idempotency";
+import { maintenanceMode } from "./middleware/maintenanceMode";
 import { loadConfig } from "./config";
 import { buildOpenApiSpec } from "./openapi";
 import { isReady } from "./utils/readiness";
@@ -42,6 +43,7 @@ export function createApp(): Express {
   app.use(express.json({ limit: config.bodyLimit }));
   app.use(requestId);
   app.use(requestLogger);
+  app.use(maintenanceMode(config.maintenanceMode));
   app.use(apiKeyAuth(config.apiKey));
   app.use(rateLimiter());
   app.use(idempotency());
