@@ -89,6 +89,9 @@ export function createApp(): Express {
   });
 
   app.use("/api/v1/liquidity", liquidityRouter(liquidity));
+  // The quote endpoint recomputes routing on every call, so it gets a
+  // stricter rate limit than the general default in addition to it.
+  app.use("/api/v1/quote", rateLimiter({ max: 10, windowMs: 60_000 }));
   app.use("/api/v1/quote", quoteRouter(quotes));
   app.use("/api/v1/anchors", anchorRouter(anchors));
   app.use("/api/v1/settlements", settlementRouter(settlements));
