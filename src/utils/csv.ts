@@ -15,13 +15,12 @@ function escapeField(value: unknown): string {
  * Serializes an array of flat objects to CSV using `columns` as both the
  * header row and the field order. Missing fields render as an empty cell.
  */
-export function toCsv<T extends Record<string, unknown>>(
-  rows: T[],
-  columns: string[],
-): string {
+export function toCsv<T>(rows: T[], columns: string[]): string {
   const header = columns.map(escapeField).join(",");
   const lines = rows.map((row) =>
-    columns.map((column) => escapeField(row[column])).join(","),
+    columns
+      .map((column) => escapeField((row as Record<string, unknown>)[column]))
+      .join(","),
   );
   return [header, ...lines].join("\n") + "\n";
 }

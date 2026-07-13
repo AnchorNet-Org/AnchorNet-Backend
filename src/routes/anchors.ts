@@ -5,8 +5,10 @@
 import { Router, Request, Response } from "express";
 import { AnchorService } from "../services/anchorService";
 import { applySort } from "../utils/sorting";
+import { toCsv } from "../utils/csv";
 
 const SORTABLE_FIELDS = ["id", "name", "registeredAt"];
+const CSV_COLUMNS = ["id", "name", "registeredAt", "active"];
 
 export function anchorRouter(service: AnchorService): Router {
   const router = Router();
@@ -23,14 +25,21 @@ export function anchorRouter(service: AnchorService): Router {
     res.status(201).json({ anchors });
   });
 
-  // List anchors, optionally filtered via ?status=active|inactive and sorted
-  // via ?sort=id|name|registeredAt and ?order=asc|desc.
+  // List anchors, optionally filtered via ?status=active|inactive, sorted via
+  // ?sort=id|name|registeredAt and ?order=asc|desc, and exported as CSV via
+  // ?format=csv.
   router.get("/", (req: Request, res: Response) => {
     const anchors = applySort(
       service.list(req.query.status),
       { sort: req.query.sort, order: req.query.order },
       SORTABLE_FIELDS,
     );
+
+    if (req.query.format === "csv") {
+      res.type("text/csv").send(toCsv(anchors, CSV_COLUMNS));
+      return;
+    }
+
     res.json({ anchors });
   });
 
