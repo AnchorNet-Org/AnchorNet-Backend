@@ -37,4 +37,22 @@ describe("quote routes", () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("INSUFFICIENT_LIQUIDITY");
   });
+
+  it("applies a stricter rate limit than the general default", async () => {
+    const app = createApp();
+    await seedPool(app);
+
+    for (let i = 0; i < 10; i++) {
+      const res = await request(app)
+        .post("/api/v1/quote")
+        .send({ asset: "USDC", amount: 1 });
+      expect(res.status).toBe(200);
+    }
+
+    const eleventh = await request(app)
+      .post("/api/v1/quote")
+      .send({ asset: "USDC", amount: 1 });
+
+    expect(eleventh.status).toBe(429);
+  });
 });
