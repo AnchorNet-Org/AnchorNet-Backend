@@ -6,8 +6,19 @@ import { Router, Request, Response } from "express";
 import { SettlementService } from "../services/settlementService";
 import { paginate } from "../utils/pagination";
 import { applySort } from "../utils/sorting";
+import { toCsv } from "../utils/csv";
 
 const SORTABLE_FIELDS = ["id", "amount", "fee", "status", "createdAt"];
+const CSV_COLUMNS = [
+  "id",
+  "anchor",
+  "asset",
+  "amount",
+  "fee",
+  "status",
+  "createdAt",
+  "cancelReason",
+];
 
 export function settlementRouter(service: SettlementService): Router {
   const router = Router();
@@ -31,6 +42,13 @@ export function settlementRouter(service: SettlementService): Router {
       { sort: req.query.sort, order: req.query.order },
       SORTABLE_FIELDS,
     );
+
+    // CSV export ignores pagination and returns every matching, sorted row.
+    if (req.query.format === "csv") {
+      res.type("text/csv").send(toCsv(sorted, CSV_COLUMNS));
+      return;
+    }
+
     const page = paginate(sorted, {
       page: req.query.page,
       pageSize: req.query.pageSize,
