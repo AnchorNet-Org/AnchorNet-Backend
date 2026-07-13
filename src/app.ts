@@ -29,6 +29,7 @@ import { rateLimiter } from "./middleware/rateLimiter";
 import { securityHeaders } from "./middleware/securityHeaders";
 import { idempotency } from "./middleware/idempotency";
 import { maintenanceMode } from "./middleware/maintenanceMode";
+import { createAuditLog } from "./middleware/auditLog";
 import { loadConfig } from "./config";
 import { buildOpenApiSpec } from "./openapi";
 import { isReady } from "./utils/readiness";
@@ -47,6 +48,9 @@ export function createApp(): Express {
   app.use(apiKeyAuth(config.apiKey));
   app.use(rateLimiter());
   app.use(idempotency());
+
+  const audit = createAuditLog();
+  app.use(audit.middleware);
 
   // Shared in-memory state and services for this process.
   const repo = new LiquidityRepository();
@@ -86,6 +90,10 @@ export function createApp(): Express {
 
   app.get("/api/v1/openapi.json", (_req: Request, res: Response) => {
     res.json(buildOpenApiSpec());
+  });
+
+  app.get("/api/v1/audit", (_req: Request, res: Response) => {
+    res.json({ entries: audit.entries() });
   });
 
   app.use("/api/v1/liquidity", liquidityRouter(liquidity));
