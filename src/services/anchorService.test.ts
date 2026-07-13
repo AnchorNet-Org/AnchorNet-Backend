@@ -107,7 +107,9 @@ describe("AnchorService", () => {
     service.register({ id: "anchorB" });
     service.deregister("anchorB");
 
-    expect(service.list("active").map((a) => a.id)).toEqual(["anchorA"]);
+    expect(service.list({ status: "active" }).map((a) => a.id)).toEqual([
+      "anchorA",
+    ]);
   });
 
   it("filters anchors by inactive status", () => {
@@ -116,12 +118,45 @@ describe("AnchorService", () => {
     service.register({ id: "anchorB" });
     service.deregister("anchorB");
 
-    expect(service.list("inactive").map((a) => a.id)).toEqual(["anchorB"]);
+    expect(service.list({ status: "inactive" }).map((a) => a.id)).toEqual([
+      "anchorB",
+    ]);
   });
 
   it("rejects an invalid status filter", () => {
     const service = makeService();
-    expect(() => service.list("bogus")).toThrow(ApiError);
+    expect(() => service.list({ status: "bogus" })).toThrow(ApiError);
+  });
+
+  it("searches anchors by a case-insensitive id/name substring", () => {
+    const service = makeService();
+    service.register({ id: "stellar-anchor", name: "Stellar Vault" });
+    service.register({ id: "other", name: "Something Else" });
+
+    expect(service.list({ q: "STELLAR" }).map((a) => a.id)).toEqual([
+      "stellar-anchor",
+    ]);
+    expect(service.list({ q: "vault" }).map((a) => a.id)).toEqual([
+      "stellar-anchor",
+    ]);
+  });
+
+  it("combines a search query with a status filter", () => {
+    const service = makeService();
+    service.register({ id: "anchorA", name: "Alpha" });
+    service.register({ id: "anchorB", name: "Alpine" });
+    service.deregister("anchorB");
+
+    expect(
+      service.list({ q: "al", status: "active" }).map((a) => a.id),
+    ).toEqual(["anchorA"]);
+  });
+
+  it("returns an empty list when the search query matches nothing", () => {
+    const service = makeService();
+    service.register({ id: "anchorA" });
+
+    expect(service.list({ q: "no-match" })).toEqual([]);
   });
 
   it("registers a batch of anchors", () => {

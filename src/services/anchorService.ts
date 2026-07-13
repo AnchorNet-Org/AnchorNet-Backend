@@ -31,22 +31,33 @@ export class AnchorService {
   }
 
   /**
-   * Returns anchors, optionally filtered by active status. `statusInput` must
-   * be `"active"`, `"inactive"`, or `undefined` (no filter); anything else is
-   * a 400.
+   * Returns anchors, optionally filtered by active status and/or a free-text
+   * search over `id`/`name`. `status` must be `"active"`, `"inactive"`, or
+   * `undefined` (no filter); anything else is a 400. `q` matches
+   * case-insensitively as a substring of either field.
    */
-  list(statusInput?: unknown): Anchor[] {
-    if (statusInput === undefined) {
-      return this.repo.all();
+  list(filters: { status?: unknown; q?: unknown } = {}): Anchor[] {
+    let anchors = this.repo.all();
+
+    if (filters.status !== undefined) {
+      const status = requireString(filters.status, "status");
+      if (status !== "active" && status !== "inactive") {
+        throw ApiError.badRequest('"status" must be "active" or "inactive"');
+      }
+      const active = status === "active";
+      anchors = anchors.filter((anchor) => anchor.active === active);
     }
 
-    const status = requireString(statusInput, "status");
-    if (status !== "active" && status !== "inactive") {
-      throw ApiError.badRequest('"status" must be "active" or "inactive"');
+    if (filters.q !== undefined) {
+      const query = requireString(filters.q, "q").toLowerCase();
+      anchors = anchors.filter(
+        (anchor) =>
+          anchor.id.toLowerCase().includes(query) ||
+          anchor.name.toLowerCase().includes(query),
+      );
     }
 
-    const active = status === "active";
-    return this.repo.all().filter((anchor) => anchor.active === active);
+    return anchors;
   }
 
   /** Returns one anchor or 404. */
