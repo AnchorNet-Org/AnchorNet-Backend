@@ -48,9 +48,9 @@ export function settlementRouter(service: SettlementService): Router {
     res.json(service.execute(req.params.id));
   });
 
-  // Cancel a pending settlement.
+  // Cancel a pending settlement, optionally recording a { reason }.
   router.post("/:id/cancel", (req: Request, res: Response) => {
-    res.json(service.cancel(req.params.id));
+    res.json(service.cancel(req.params.id, (req.body ?? {}).reason));
   });
 
   return router;
