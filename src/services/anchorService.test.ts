@@ -123,4 +123,45 @@ describe("AnchorService", () => {
     const service = makeService();
     expect(() => service.list("bogus")).toThrow(ApiError);
   });
+
+  it("registers a batch of anchors", () => {
+    const service = makeService();
+    const registered = service.registerBulk([
+      { id: "anchorA" },
+      { id: "anchorB", name: "Anchor B" },
+    ]);
+
+    expect(registered.map((a) => a.id)).toEqual(["anchorA", "anchorB"]);
+    expect(registered[1].name).toBe("Anchor B");
+    expect(service.get("anchorA").active).toBe(true);
+  });
+
+  it("rejects a non-array batch", () => {
+    const service = makeService();
+    expect(() => service.registerBulk({ id: "anchorA" })).toThrow(ApiError);
+  });
+
+  it("rejects an empty batch", () => {
+    const service = makeService();
+    expect(() => service.registerBulk([])).toThrow(ApiError);
+  });
+
+  it("registers none of the batch if one entry is already registered", () => {
+    const service = makeService();
+    service.register({ id: "anchorA" });
+
+    expect(() =>
+      service.registerBulk([{ id: "anchorB" }, { id: "anchorA" }]),
+    ).toThrow(ApiError);
+    expect(service.list().map((a) => a.id)).toEqual(["anchorA"]);
+  });
+
+  it("rejects a batch with a duplicate id within itself", () => {
+    const service = makeService();
+
+    expect(() =>
+      service.registerBulk([{ id: "anchorA" }, { id: "anchorA" }]),
+    ).toThrow(ApiError);
+    expect(service.list()).toEqual([]);
+  });
 });
