@@ -194,4 +194,19 @@ describe("anchor routes", () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("BAD_REQUEST");
   });
+
+  it("exports the anchor list as CSV via ?format=csv", async () => {
+    const app = createApp();
+    const registered = await request(app)
+      .post("/api/v1/anchors")
+      .send({ id: "anchorA" });
+
+    const res = await request(app).get("/api/v1/anchors?format=csv");
+
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/text\/csv/);
+    expect(res.text).toBe(
+      `id,name,registeredAt,active\nanchorA,anchorA,${registered.body.registeredAt},true\n`,
+    );
+  });
 });
