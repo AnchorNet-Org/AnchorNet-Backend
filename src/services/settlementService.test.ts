@@ -67,6 +67,41 @@ describe("SettlementService", () => {
     expect(service.available("USDC")).toBe(1000);
   });
 
+  it("records an optional reason when cancelling", () => {
+    const { service } = harness(1000);
+    const settlement = service.open({
+      anchor: "anchorA",
+      asset: "USDC",
+      amount: 400,
+    });
+
+    const cancelled = service.cancel(settlement.id, "duplicate request");
+    expect(cancelled.cancelReason).toBe("duplicate request");
+  });
+
+  it("leaves cancelReason undefined when none is given", () => {
+    const { service } = harness(1000);
+    const settlement = service.open({
+      anchor: "anchorA",
+      asset: "USDC",
+      amount: 400,
+    });
+
+    const cancelled = service.cancel(settlement.id);
+    expect(cancelled.cancelReason).toBeUndefined();
+  });
+
+  it("rejects a blank cancel reason", () => {
+    const { service } = harness(1000);
+    const settlement = service.open({
+      anchor: "anchorA",
+      asset: "USDC",
+      amount: 400,
+    });
+
+    expect(() => service.cancel(settlement.id, "   ")).toThrow(ApiError);
+  });
+
   it("consumes liquidity on execute", () => {
     const { service } = harness(1000);
     const settlement = service.open({
