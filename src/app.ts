@@ -29,6 +29,7 @@ import { securityHeaders } from "./middleware/securityHeaders";
 import { idempotency } from "./middleware/idempotency";
 import { loadConfig } from "./config";
 import { buildOpenApiSpec } from "./openapi";
+import { isReady } from "./utils/readiness";
 
 export function createApp(): Express {
   const app = express();
@@ -57,6 +58,18 @@ export function createApp(): Express {
 
   app.get("/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "anchornet-backend" });
+  });
+
+  app.get("/health/live", (_req: Request, res: Response) => {
+    res.json({ status: "ok" });
+  });
+
+  app.get("/health/ready", (_req: Request, res: Response) => {
+    if (!isReady()) {
+      res.status(503).json({ status: "not_ready" });
+      return;
+    }
+    res.json({ status: "ready" });
   });
 
   app.get("/api/v1/info", (_req: Request, res: Response) => {
