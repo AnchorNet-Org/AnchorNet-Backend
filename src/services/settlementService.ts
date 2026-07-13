@@ -91,14 +91,27 @@ export class SettlementService {
     return this.settlements.save({ ...settlement, status: "executed" });
   }
 
-  /** Cancels a pending settlement, releasing its reserved liquidity. */
-  cancel(idInput: unknown): Settlement {
+  /**
+   * Cancels a pending settlement, releasing its reserved liquidity. An
+   * optional `reason` is recorded on the settlement if provided; if given, it
+   * must be a non-blank string.
+   */
+  cancel(idInput: unknown, reasonInput?: unknown): Settlement {
     const settlement = this.requirePending(idInput);
+    const cancelReason =
+      reasonInput === undefined
+        ? undefined
+        : requireString(reasonInput, "reason");
+
     this.reserved.set(
       settlement.asset,
       (this.reserved.get(settlement.asset) ?? 0) - settlement.amount,
     );
-    return this.settlements.save({ ...settlement, status: "cancelled" });
+    return this.settlements.save({
+      ...settlement,
+      status: "cancelled",
+      cancelReason,
+    });
   }
 
   /** Returns one settlement or 404. */
