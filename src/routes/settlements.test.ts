@@ -51,6 +51,21 @@ describe("settlement routes", () => {
     expect(res.body.status).toBe("cancelled");
   });
 
+  it("records a cancel reason when provided", async () => {
+    const app = createApp();
+    await setup(app);
+    const open = await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 400 });
+
+    const res = await request(app)
+      .post(`/api/v1/settlements/${open.body.id}/cancel`)
+      .send({ reason: "duplicate request" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.cancelReason).toBe("duplicate request");
+  });
+
   it("rejects settlement beyond available liquidity", async () => {
     const app = createApp();
     await setup(app);
