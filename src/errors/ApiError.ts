@@ -34,4 +34,11 @@ export class ApiError extends Error {
   static tooManyRequests(message: string, code = "RATE_LIMITED"): ApiError {
     return new ApiError(429, code, message);
   }
+
+  static serviceUnavailable(
+    message: string,
+    code = "SERVICE_UNAVAILABLE",
+  ): ApiError {
+    return new ApiError(503, code, message);
+  }
 }
