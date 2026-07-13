@@ -78,8 +78,10 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
   both the existing registry and duplicates within the batch) before storing
   any of them, so one bad entry never leaves a partial batch registered
 - `GET /api/v1/anchors` – list anchors; supports `?status=active` or
-  `?status=inactive` (`400` for any other value), and `?sort=id|name|registeredAt`
-  with `?order=asc|desc` (default `asc`)
+  `?status=inactive` (`400` for any other value), a free-text `?q=` search
+  over `id`/`name` (case-insensitive substring match), `?sort=id|name|registeredAt`
+  with `?order=asc|desc` (default `asc`), and `?format=csv` to export the
+  (post-filter, post-sort) list as CSV instead of JSON
 - `GET /api/v1/anchors/:id` – read one anchor (`404` if unknown)
 - `PATCH /api/v1/anchors/:id` – partially update an anchor's mutable `name`
   (`404` if unknown, `400` if `name` is missing or blank)
@@ -93,10 +95,12 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
   reserving liquidity. Returns `201` with the pending settlement.
 - `GET /api/v1/settlements` – list settlements; supports `?anchor=`, `?asset=`,
   `?sort=id|amount|fee|status|createdAt` with `?order=asc|desc` (default
-  `asc`), `?page=`, `?pageSize=`
+  `asc`), `?page=`, `?pageSize=`, and `?format=csv` (ignores pagination and
+  exports every matching, sorted row)
 - `GET /api/v1/settlements/:id` – read one settlement
 - `POST /api/v1/settlements/:id/execute` – execute a pending settlement
-- `POST /api/v1/settlements/:id/cancel` – cancel and release reserved liquidity
+- `POST /api/v1/settlements/:id/cancel` – cancel and release reserved
+  liquidity; accepts an optional `{ reason }` recorded on the settlement
 
 ### Metrics
 
@@ -114,7 +118,8 @@ tracing, plus a small set of defensive security headers (`X-Content-Type-Options
 
 Mutating requests (`POST`/`PUT`/`PATCH`/`DELETE`) are rate-limited per client
 IP (default 30 requests/minute, in-memory). Requests over the limit receive
-`429` with code `RATE_LIMITED`.
+`429` with code `RATE_LIMITED`. `POST /api/v1/quote` has an additional,
+stricter limit (10 requests/minute) on top of the general one.
 
 Mutating requests may also send an `Idempotency-Key` header. The first request
 for a given key/method/path runs normally and its response is cached; any
