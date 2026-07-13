@@ -25,12 +25,12 @@ export function anchorRouter(service: AnchorService): Router {
     res.status(201).json({ anchors });
   });
 
-  // List anchors, optionally filtered via ?status=active|inactive, sorted via
-  // ?sort=id|name|registeredAt and ?order=asc|desc, and exported as CSV via
-  // ?format=csv.
+  // List anchors, optionally filtered via ?status=active|inactive and/or a
+  // free-text ?q= search over id/name, sorted via ?sort=id|name|registeredAt
+  // and ?order=asc|desc, and exported as CSV via ?format=csv.
   router.get("/", (req: Request, res: Response) => {
     const anchors = applySort(
-      service.list(req.query.status),
+      service.list({ status: req.query.status, q: req.query.q }),
       { sort: req.query.sort, order: req.query.order },
       SORTABLE_FIELDS,
     );
