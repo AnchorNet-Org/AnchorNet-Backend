@@ -21,4 +21,6 @@ export interface Settlement {
   status: SettlementStatus;
   /** ISO-8601 timestamp of creation. */
   createdAt: string;
+  /** Optional operator-supplied reason recorded when the settlement was cancelled. */
+  cancelReason?: string;
 }
