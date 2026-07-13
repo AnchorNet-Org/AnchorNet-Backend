@@ -43,6 +43,9 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 ### Service
 
 - `GET /health` – health check
+- `GET /health/live` – liveness probe, always `200` while the process is up
+- `GET /health/ready` – readiness probe, `200` normally and `503` once a
+  graceful shutdown has begun (so a load balancer stops routing new traffic)
 - `GET /api/v1/info` – API name and version
 - `GET /api/v1/openapi.json` – hand-maintained OpenAPI-shaped description of
   every route below
@@ -70,6 +73,10 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 ### Anchors
 
 - `POST /api/v1/anchors` – register an anchor `{ id, name? }` (`409` if it exists)
+- `POST /api/v1/anchors/bulk` – register a batch of anchors atomically
+  `{ anchors: [{ id, name? }, ...] }`; validates and checks every entry (against
+  both the existing registry and duplicates within the batch) before storing
+  any of them, so one bad entry never leaves a partial batch registered
 - `GET /api/v1/anchors` – list anchors; supports `?status=active` or
   `?status=inactive` (`400` for any other value), and `?sort=id|name|registeredAt`
   with `?order=asc|desc` (default `asc`)
@@ -117,8 +124,15 @@ side effects (e.g. registering the same anchor twice). State is in-memory and
 per-process.
 
 The process shuts down gracefully on `SIGTERM`/`SIGINT`: it stops accepting
-new connections, closes the HTTP server, and force-exits if it hasn't closed
-within 10 seconds.
+new connections, closes the HTTP server, marks `/health/ready` unready, and
+force-exits if it hasn't closed within 10 seconds.
+
+Responses are gzip-compressed when the client sends `Accept-Encoding: gzip`
+and the body is large enough to benefit.
+
+When `MAINTENANCE_MODE` is enabled, every mutating request (`POST`/`PUT`/`PATCH`/`DELETE`)
+is rejected with `503` (`SERVICE_UNAVAILABLE`) while reads keep working, so
+operators can pause writes without taking the whole API down.
 
 ## Configuration
 
@@ -129,6 +143,7 @@ within 10 seconds.
 | `API_KEY` | – | If set, mutating requests must send `x-api-key` |
 | `CORS_ORIGIN` | – | Comma-separated allowlist of origins; unset allows any origin |
 | `BODY_LIMIT` | `100kb` | Maximum accepted JSON request body size (`express.json` `limit` syntax) |
+| `MAINTENANCE_MODE` | `false` | When `1`/`true`, mutating requests are rejected with `503` |
 | `NODE_ENV` | `development` | Environment name |
 
 ### Architecture
