@@ -36,10 +36,17 @@ export function createAuditLog(
         return;
       }
 
+      // Snapshot method/path now: Express mutates `req.url` (and so
+      // `req.path`) while dispatching through mounted sub-routers, and by the
+      // time the `finish` event fires that mutation may not have been
+      // unwound, so reading them lazily below would capture the wrong value.
+      const method = req.method;
+      const path = req.originalUrl.split("?")[0];
+
       res.on("finish", () => {
         history.push({
-          method: req.method,
-          path: req.path,
+          method,
+          path,
           status: res.statusCode,
           requestId: res.getHeader("x-request-id") as string | undefined,
           timestamp: new Date().toISOString(),
