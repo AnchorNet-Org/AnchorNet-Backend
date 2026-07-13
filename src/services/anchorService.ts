@@ -93,4 +93,46 @@ export class AnchorService {
   isActive(id: string): boolean {
     return this.repo.get(id)?.active === true;
   }
+
+  /**
+   * Registers a batch of anchors atomically: every entry is validated (and
+   * checked against both the existing registry and duplicate ids within the
+   * same batch) before any of them are stored, so a single bad entry never
+   * leaves a partial batch registered.
+   */
+  registerBulk(input: unknown): Anchor[] {
+    if (!Array.isArray(input) || input.length === 0) {
+      throw ApiError.badRequest('"anchors" must be a non-empty array');
+    }
+
+    const seen = new Set<string>();
+    const parsed = input.map((entry, index) => {
+      const record = (entry ?? {}) as { id?: unknown; name?: unknown };
+      const id = requireString(record.id, `anchors[${index}].id`);
+      const name =
+        record.name === undefined
+          ? id
+          : requireString(record.name, `anchors[${index}].name`);
+
+      if (seen.has(id)) {
+        throw ApiError.conflict(`anchor "${id}" appears more than once in the batch`);
+      }
+      seen.add(id);
+
+      if (this.repo.has(id)) {
+        throw ApiError.conflict(`anchor "${id}" is already registered`);
+      }
+
+      return { id, name };
+    });
+
+    return parsed.map(({ id, name }) =>
+      this.repo.upsert({
+        id,
+        name,
+        registeredAt: new Date().toISOString(),
+        active: true,
+      }),
+    );
+  }
 }
