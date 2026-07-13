@@ -156,4 +156,42 @@ describe("anchor routes", () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("BAD_REQUEST");
   });
+
+  it("registers a batch of anchors via POST /bulk", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/anchors/bulk")
+      .send({ anchors: [{ id: "anchorA" }, { id: "anchorB", name: "B" }] });
+
+    expect(res.status).toBe(201);
+    expect(res.body.anchors.map((a: { id: string }) => a.id)).toEqual([
+      "anchorA",
+      "anchorB",
+    ]);
+
+    const list = await request(app).get("/api/v1/anchors");
+    expect(list.body.anchors).toHaveLength(2);
+  });
+
+  it("returns 409 and registers none of the bulk batch on conflict", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+
+    const res = await request(app)
+      .post("/api/v1/anchors/bulk")
+      .send({ anchors: [{ id: "anchorB" }, { id: "anchorA" }] });
+
+    expect(res.status).toBe(409);
+
+    const list = await request(app).get("/api/v1/anchors");
+    expect(list.body.anchors).toHaveLength(1);
+  });
+
+  it("returns 400 for a bulk request with no anchors array", async () => {
+    const app = createApp();
+    const res = await request(app).post("/api/v1/anchors/bulk").send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
 });
