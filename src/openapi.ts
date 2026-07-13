@@ -67,6 +67,9 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       "/api/v1/anchors/{id}/reactivate": {
         post: { summary: "Reactivate a previously deactivated anchor" },
       },
+      "/api/v1/anchors/bulk": {
+        post: { summary: "Register a batch of anchors atomically" },
+      },
       "/api/v1/settlements": {
         post: { summary: "Open a settlement, reserving liquidity" },
         get: {

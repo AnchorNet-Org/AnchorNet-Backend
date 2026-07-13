@@ -10,6 +10,7 @@ describe("openapi spec", () => {
     expect(spec.paths).toHaveProperty("/health/ready");
     expect(spec.paths).toHaveProperty("/api/v1/anchors");
     expect(spec.paths).toHaveProperty("/api/v1/anchors/{id}/reactivate");
+    expect(spec.paths).toHaveProperty("/api/v1/anchors/bulk");
     expect(spec.paths).toHaveProperty("/api/v1/settlements");
     expect(spec.paths).toHaveProperty("/api/v1/liquidity");
     expect(spec.paths).toHaveProperty("/api/v1/liquidity/withdraw");
