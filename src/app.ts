@@ -79,7 +79,7 @@ export function createApp(): Express {
   app.get("/api/v1/info", (_req: Request, res: Response) => {
     res.json({
       name: "AnchorNet API",
-      version: "0.6.0",
+      version: "0.7.0",
       description: "Liquidity coordination network for Stellar anchors",
     });
   });
