@@ -56,7 +56,7 @@ export function buildOpenApiSpec(): Record<string, unknown> {
         post: { summary: "Register an anchor" },
         get: {
           summary: "List anchors",
-          parameters: ["status", "sort", "order"],
+          parameters: ["status", "q", "sort", "order", "format"],
         },
       },
       "/api/v1/anchors/{id}": {
@@ -81,6 +81,7 @@ export function buildOpenApiSpec(): Record<string, unknown> {
             "order",
             "page",
             "pageSize",
+            "format",
           ],
         },
       },
