@@ -2,6 +2,22 @@
 
 All notable changes to the AnchorNet API are documented here.
 
+## [0.7.0]
+
+### Added
+
+- **Health:** `GET /health/live` (liveness) and `GET /health/ready`
+  (readiness) probes, backed by a new process-wide readiness tracker. The
+  process now marks itself not-ready as soon as a graceful shutdown begins.
+- **Performance:** gzip response compression for clients that accept it.
+- **Operations:** `MAINTENANCE_MODE` config flag — when enabled, mutating
+  requests are rejected with `503` (`SERVICE_UNAVAILABLE`) while reads keep
+  working.
+- **Anchors:** `POST /api/v1/anchors/bulk` to atomically register a batch of
+  anchors; the whole batch is validated (including duplicates within the
+  batch) before any of it is stored.
+- **Errors:** `ApiError.serviceUnavailable` (503) helper.
+
 ## [0.6.0]
 
 ### Added
