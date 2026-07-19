@@ -225,3 +225,183 @@ describe("anchor routes", () => {
     );
   });
 });
+
+describe("GET /api/v1/anchors/:id/settlements", () => {
+  async function setupAnchorWithSettlements(app: ReturnType<typeof createApp>) {
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 5000 });
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 200 });
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 300 });
+  }
+
+  it("returns settlements scoped to the anchor", async () => {
+    const app = createApp();
+    await setupAnchorWithSettlements(app);
+
+    const res = await request(app).get("/api/v1/anchors/anchorA/settlements");
+
+    expect(res.status).toBe(200);
+    expect(res.body.settlements).toHaveLength(3);
+    expect(res.body.settlements.every((s: { anchor: string }) => s.anchor === "anchorA")).toBe(true);
+  });
+
+  it("returns 404 for an unknown anchor id", async () => {
+    const app = createApp();
+
+    const res = await request(app).get("/api/v1/anchors/unknown/settlements");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("returns an empty list when the anchor has no settlements", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+
+    const res = await request(app).get("/api/v1/anchors/anchorA/settlements");
+
+    expect(res.status).toBe(200);
+    expect(res.body.settlements).toHaveLength(0);
+    expect(res.body.pagination.total).toBe(0);
+  });
+
+  it("does not include settlements from other anchors", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+    await request(app).post("/api/v1/anchors").send({ id: "anchorB" });
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 5000 });
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorB", asset: "USDC", amount: 5000 });
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorB", asset: "USDC", amount: 200 });
+
+    const res = await request(app).get("/api/v1/anchors/anchorA/settlements");
+
+    expect(res.status).toBe(200);
+    expect(res.body.settlements).toHaveLength(1);
+    expect(res.body.settlements[0].anchor).toBe("anchorA");
+  });
+
+  it("returns the same shape as GET /api/v1/settlements?anchor=", async () => {
+    const app = createApp();
+    await setupAnchorWithSettlements(app);
+
+    const nested = await request(app).get("/api/v1/anchors/anchorA/settlements");
+    const filtered = await request(app).get("/api/v1/settlements?anchor=anchorA");
+
+    expect(nested.status).toBe(200);
+    expect(filtered.status).toBe(200);
+    expect(nested.body.settlements).toEqual(filtered.body.settlements);
+    expect(nested.body.pagination.total).toBe(filtered.body.pagination.total);
+  });
+
+  it("supports ?sort= and ?order= parameters", async () => {
+    const app = createApp();
+    await setupAnchorWithSettlements(app);
+
+    const res = await request(app).get(
+      "/api/v1/anchors/anchorA/settlements?sort=amount&order=asc",
+    );
+
+    expect(res.status).toBe(200);
+    const amounts = res.body.settlements.map((s: { amount: number }) => s.amount);
+    expect(amounts).toEqual([100, 200, 300]);
+  });
+
+  it("supports ?sort=amount&order=desc", async () => {
+    const app = createApp();
+    await setupAnchorWithSettlements(app);
+
+    const res = await request(app).get(
+      "/api/v1/anchors/anchorA/settlements?sort=amount&order=desc",
+    );
+
+    expect(res.status).toBe(200);
+    const amounts = res.body.settlements.map((s: { amount: number }) => s.amount);
+    expect(amounts).toEqual([300, 200, 100]);
+  });
+
+  it("supports ?page= and ?pageSize= parameters", async () => {
+    const app = createApp();
+    await setupAnchorWithSettlements(app);
+
+    const res = await request(app).get(
+      "/api/v1/anchors/anchorA/settlements?pageSize=2&page=1&sort=amount&order=asc",
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.settlements).toHaveLength(2);
+    expect(res.body.pagination.page).toBe(1);
+    expect(res.body.pagination.pageSize).toBe(2);
+    expect(res.body.pagination.total).toBe(3);
+    expect(res.body.pagination.totalPages).toBe(2);
+  });
+
+  it("returns the second page correctly", async () => {
+    const app = createApp();
+    await setupAnchorWithSettlements(app);
+
+    const res = await request(app).get(
+      "/api/v1/anchors/anchorA/settlements?pageSize=2&page=2&sort=amount&order=asc",
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.settlements).toHaveLength(1);
+    expect(res.body.settlements[0].amount).toBe(300);
+    expect(res.body.pagination.page).toBe(2);
+  });
+
+  it("returns 400 for an invalid sort field", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+
+    const res = await request(app).get(
+      "/api/v1/anchors/anchorA/settlements?sort=bogus",
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
+
+  it("returns 400 for an invalid order value", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+
+    const res = await request(app).get(
+      "/api/v1/anchors/anchorA/settlements?sort=id&order=sideways",
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
+
+  it("exports settlements as CSV via ?format=csv", async () => {
+    const app = createApp();
+    await setupAnchorWithSettlements(app);
+
+    const res = await request(app).get(
+      "/api/v1/anchors/anchorA/settlements?format=csv",
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/text\/csv/);
+    expect(res.text).toMatch(/^id,anchor,asset,amount,fee,status,createdAt,cancelReason\n/);
+    expect(res.text).toContain("anchorA");
+  });
+});

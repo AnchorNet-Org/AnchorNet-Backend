@@ -91,6 +91,13 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 - `POST /api/v1/anchors/:id/reactivate` – reactivate a previously deactivated
   anchor (`404` if unknown)
 
+### Anchor Settlements
+
+- `GET /api/v1/anchors/:id/settlements` – list settlements scoped to a specific
+  anchor (`404` if the anchor id is unknown); supports the same
+  `?sort=id|amount|fee|status|createdAt`, `?order=asc|desc`, `?page=`,
+  `?pageSize=`, and `?format=csv` params as `GET /api/v1/settlements`
+
 ### Settlements
 
 - `POST /api/v1/settlements` – open a settlement `{ anchor, asset, amount }`,
