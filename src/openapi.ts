@@ -76,6 +76,15 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       "/api/v1/anchors/bulk": {
         post: { summary: "Register a batch of anchors atomically" },
       },
+      "/api/v1/anchors/{id}/settlements": {
+        get: {
+          summary: "List settlements scoped to a specific anchor",
+          description:
+            "Returns the same paginated settlement list as GET /api/v1/settlements?anchor={id}, " +
+            "but scoped to the anchor identified by :id. Returns 404 if the anchor does not exist.",
+          parameters: ["sort", "order", "page", "pageSize", "format"],
+        },
+      },
       "/api/v1/settlements": {
         post: { summary: "Open a settlement, reserving liquidity" },
         get: {
