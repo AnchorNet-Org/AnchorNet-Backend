@@ -27,6 +27,14 @@ export interface QuoteRequest {
   amount: number;
 }
 
+/** A single leg in a multi-anchor route. */
+export interface RouteEntry {
+  /** Anchor identifier supplying the portion. */
+  anchor: string;
+  /** Amount sourced from this anchor, in the asset's smallest unit. */
+  portion: number;
+}
+
 /** A computed routing quote for a {@link QuoteRequest}. */
 export interface Quote {
   asset: string;
@@ -35,6 +43,6 @@ export interface Quote {
   fee: number;
   /** Amount delivered after fees. */
   deliverable: number;
-  /** Anchors selected to source the liquidity, largest first. */
-  route: string[];
+  /** Anchors selected to source the liquidity, largest first, with per-anchor portions. */
+  route: RouteEntry[];
 }

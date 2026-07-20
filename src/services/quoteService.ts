@@ -7,7 +7,7 @@
  */
 
 import { LiquidityRepository } from "../repositories/liquidityRepository";
-import { Quote } from "../models/liquidity";
+import { Quote, RouteEntry } from "../models/liquidity";
 import { ApiError } from "../errors/ApiError";
 import { normalizeAsset, requirePositiveNumber } from "../utils/validation";
 
@@ -42,12 +42,13 @@ export class QuoteService {
       );
     }
 
-    const route: string[] = [];
-    let filled = 0;
+    const route: RouteEntry[] = [];
+    let remaining = amount;
     for (const entry of sources) {
-      if (filled >= amount) break;
-      route.push(entry.anchor);
-      filled += entry.amount;
+      if (remaining <= 0) break;
+      const taken = Math.min(remaining, entry.amount);
+      route.push({ anchor: entry.anchor, portion: taken });
+      remaining -= taken;
     }
 
     const fee = Math.ceil((amount * this.feeBps) / BPS_DIVISOR);

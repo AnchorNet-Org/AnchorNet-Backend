@@ -21,9 +21,24 @@ describe("quote routes", () => {
       .send({ asset: "USDC", amount: 1000 });
 
     expect(res.status).toBe(200);
-    expect(res.body.route).toEqual(["big"]);
+    expect(res.body.route).toEqual([{ anchor: "big", portion: 1000 }]);
     expect(res.body.fee).toBe(1);
     expect(res.body.deliverable).toBe(999);
+  });
+
+  it("returns a multi-anchor route when one anchor cannot cover the amount", async () => {
+    const app = createApp();
+    await seedPool(app);
+
+    const res = await request(app)
+      .post("/api/v1/quote")
+      .send({ asset: "USDC", amount: 1200 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.route).toEqual([
+      { anchor: "big", portion: 1000 },
+      { anchor: "mid", portion: 200 },
+    ]);
   });
 
   it("returns 400 when liquidity is insufficient", async () => {
