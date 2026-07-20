@@ -57,6 +57,43 @@ describe("anchor routes", () => {
     expect(res.body.active).toBe(true);
   });
 
+  it("produces an audit log entry when reactivating an anchor, symmetric to deactivate", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+    await request(app).delete("/api/v1/anchors/anchorA");
+
+    await request(app).post("/api/v1/anchors/anchorA/reactivate");
+
+    const auditRes = await request(app).get("/api/v1/audit");
+    expect(auditRes.status).toBe(200);
+
+    const entries = auditRes.body.entries;
+    
+    const deactivateEntry = entries.find(
+      (e: any) => e.method === "DELETE" && e.path === "/api/v1/anchors/anchorA"
+    );
+    expect(deactivateEntry).toBeDefined();
+    expect(deactivateEntry).toMatchObject({
+      method: "DELETE",
+      path: "/api/v1/anchors/anchorA",
+      status: 200,
+    });
+    expect(deactivateEntry).toHaveProperty("requestId");
+    expect(deactivateEntry).toHaveProperty("timestamp");
+
+    const reactivateEntry = entries.find(
+      (e: any) => e.method === "POST" && e.path === "/api/v1/anchors/anchorA/reactivate"
+    );
+    expect(reactivateEntry).toBeDefined();
+    expect(reactivateEntry).toMatchObject({
+      method: "POST",
+      path: "/api/v1/anchors/anchorA/reactivate",
+      status: 200,
+    });
+    expect(reactivateEntry).toHaveProperty("requestId");
+    expect(reactivateEntry).toHaveProperty("timestamp");
+  });
+
   it("returns 404 reactivating an unknown anchor", async () => {
     const res = await request(createApp()).post(
       "/api/v1/anchors/missing/reactivate",
