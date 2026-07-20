@@ -135,6 +135,53 @@ describe("settlement routes", () => {
     );
   });
 
+  it("sorts settlements by amount with 9 and 10 numerically", async () => {
+    const app = createApp();
+    await setup(app);
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 10 });
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 9 });
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+    const asc = await request(app).get(
+      "/api/v1/settlements?sort=amount&order=asc",
+    );
+    expect(asc.status).toBe(200);
+    expect(asc.body.settlements.map((s: { amount: number }) => s.amount)).toEqual(
+      [9, 10, 100],
+    );
+  });
+
+  it("sorts settlements by fee", async () => {
+    const app = createApp();
+    await setup(app);
+    const s1 = await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+    const s2 = await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 50 });
+    const s3 = await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 200 });
+
+    const fees = [s1.body.fee, s2.body.fee, s3.body.fee];
+    const sortedFees = [...fees].sort((a, b) => a - b);
+
+    const asc = await request(app).get(
+      "/api/v1/settlements?sort=fee&order=asc",
+    );
+    expect(asc.status).toBe(200);
+    expect(asc.body.settlements.map((s: { fee: number }) => s.fee)).toEqual(
+      sortedFees,
+    );
+  });
+
   it("returns 400 for an unknown sort field", async () => {
     const app = createApp();
     await setup(app);
