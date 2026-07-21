@@ -110,4 +110,14 @@ describe("normalizeAsset", () => {
   it("rejects an empty value", () => {
     expect(() => normalizeAsset("")).toThrow(ApiError);
   });
+
+  it("rejects a non-alphanumeric value", () => {
+    expect(() => normalizeAsset("USD-C")).toThrow(ApiError);
+    expect(() => normalizeAsset("USDC_1")).toThrow(ApiError);
+    expect(() => normalizeAsset("USD!")).toThrow(ApiError);
+  });
+
+  it("rejects a value that is too long (gt 12 chars)", () => {
+    expect(() => normalizeAsset("THISISWAYTOOLONGASSETCODE")).toThrow(ApiError);
+  });
 });

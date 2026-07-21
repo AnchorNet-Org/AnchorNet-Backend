@@ -115,4 +115,14 @@ describe("liquidity routes", () => {
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("NOT_FOUND");
   });
+
+  it("returns 400 for an invalid asset code format", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "TOOLONGASSETCODE", amount: 500 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
 });

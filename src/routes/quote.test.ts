@@ -70,4 +70,16 @@ describe("quote routes", () => {
 
     expect(eleventh.status).toBe(429);
   });
+
+  it("returns 400 for an invalid asset code format", async () => {
+    const app = createApp();
+    await seedPool(app);
+
+    const res = await request(app)
+      .post("/api/v1/quote")
+      .send({ asset: "INVALID_ASSET!", amount: 1000 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
 });
