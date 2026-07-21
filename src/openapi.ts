@@ -55,6 +55,14 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       "/api/v1/liquidity/{asset}": {
         get: { summary: "Read the aggregated pool for one asset" },
       },
+      "/api/v1/liquidity/{anchor}/{asset}": {
+        delete: {
+          summary: "Remove an anchor's entire liquidity entry for an asset",
+          description:
+            "Administrative operation that bypasses reserved-liquidity accounting checks. " +
+            "Confirm that no pending settlements depend on the entry before removing it.",
+        },
+      },
       "/api/v1/quote": {
         post: {
           summary:

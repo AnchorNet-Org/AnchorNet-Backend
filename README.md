@@ -64,6 +64,10 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 - `GET /api/v1/liquidity` – list aggregated pools `{ pools: [{ asset, total, anchors }] }`
 - `GET /api/v1/liquidity/entries` – list raw per-anchor entries
 - `GET /api/v1/liquidity/:asset` – aggregated pool for one asset (`404` if none)
+- `DELETE /api/v1/liquidity/:anchor/:asset` – administratively remove an
+  anchor's entire entry (`404` if none). This bypasses reserved-liquidity
+  accounting checks, so operators should first confirm that no pending
+  settlements depend on the entry.
 
 ### Routing
 

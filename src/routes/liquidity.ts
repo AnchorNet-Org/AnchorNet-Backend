@@ -30,6 +30,11 @@ export function liquidityRouter(service: LiquidityService): Router {
     res.json({ entries: service.listEntries() });
   });
 
+  // Force-remove an anchor's entire liquidity entry for an asset.
+  router.delete("/:anchor/:asset", (req: Request, res: Response) => {
+    res.json(service.removeEntry(req.params.anchor, req.params.asset));
+  });
+
   // Read the aggregated pool for a single asset.
   router.get("/:asset", (req: Request, res: Response) => {
     res.json(service.getPool(req.params.asset));

@@ -115,4 +115,38 @@ describe("liquidity routes", () => {
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("NOT_FOUND");
   });
+
+  it("deletes one anchor's entire liquidity entry", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorB", asset: "USDC", amount: 300 });
+
+    const res = await request(app).delete(
+      "/api/v1/liquidity/anchorA/usdc",
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      anchor: "anchorA",
+      asset: "USDC",
+      amount: 500,
+    });
+
+    const entries = await request(app).get("/api/v1/liquidity/entries");
+    expect(entries.body.entries).toHaveLength(1);
+    expect(entries.body.entries[0].anchor).toBe("anchorB");
+  });
+
+  it("returns 404 when deleting a non-existent liquidity entry", async () => {
+    const res = await request(createApp()).delete(
+      "/api/v1/liquidity/anchorA/USDC",
+    );
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
 });
