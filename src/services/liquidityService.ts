@@ -81,6 +81,25 @@ export class LiquidityService {
     return this.repo.upsert({ anchor, asset, amount: remaining, updatedAt });
   }
 
+  /**
+   * Removes an anchor's entire liquidity entry for an asset, regardless of
+   * its current balance. Returns the removed entry, or 404 if none exists.
+   */
+  removeEntry(anchorInput: unknown, assetInput: unknown): LiquidityEntry {
+    const anchor = requireString(anchorInput, "anchor");
+    const asset = normalizeAsset(assetInput);
+    const existing = this.repo.get(anchor, asset);
+
+    if (!existing) {
+      throw ApiError.notFound(
+        `no liquidity balance for anchor "${anchor}" in ${asset}`,
+      );
+    }
+
+    this.repo.remove(anchor, asset);
+    return existing;
+  }
+
   /** Returns the aggregated pools for every asset. */
   listPools(): Pool[] {
     return this.repo.pools().sort((a, b) => a.asset.localeCompare(b.asset));

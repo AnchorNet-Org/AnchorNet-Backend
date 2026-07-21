@@ -106,4 +106,26 @@ describe("LiquidityService", () => {
       }),
     ).toThrow(ApiError);
   });
+
+  it("removes an entire entry with normalized inputs", () => {
+    const service = makeService();
+    service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+    const removed = service.removeEntry(" anchorA ", "usdc");
+
+    expect(removed).toMatchObject({
+      anchor: "anchorA",
+      asset: "USDC",
+      amount: 100,
+    });
+    expect(service.listEntries()).toEqual([]);
+  });
+
+  it("throws 404 when removing a non-existent entry", () => {
+    const service = makeService();
+
+    expect(() => service.removeEntry("anchorA", "USDC")).toThrow(
+      expect.objectContaining({ status: 404, code: "NOT_FOUND" }),
+    );
+  });
 });
