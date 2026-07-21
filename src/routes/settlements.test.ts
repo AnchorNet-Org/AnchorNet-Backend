@@ -135,6 +135,29 @@ describe("settlement routes", () => {
     );
   });
 
+  it("sorts settlements by multiple fields (?sort=status,createdAt)", async () => {
+    const app = createApp();
+    await setup(app);
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+    const s2 = await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 200 });
+    await request(app).post(`/api/v1/settlements/${s2.body.id}/execute`);
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 300 });
+
+    const res = await request(app).get(
+      "/api/v1/settlements?sort=status,createdAt&order=asc,asc",
+    );
+    expect(res.status).toBe(200);
+    expect(
+      res.body.settlements.map((s: { status: string }) => s.status),
+    ).toEqual(["executed", "pending", "pending"]);
+  });
+
   it("returns 400 for an unknown sort field", async () => {
     const app = createApp();
     await setup(app);
