@@ -1,12 +1,13 @@
 /**
  * In-memory rate limiter for mutating requests.
  *
- * Tracks request counts per client (by IP) in a fixed rolling window and
- * rejects requests over the limit with 429. Read-only requests are always
- * allowed. State lives in a plain `Map` local to the returned middleware, so
- * each `rateLimiter()` instance keeps its own counters; this is a per-process
- * safeguard and not suitable for multi-instance deployments without a shared
- * store.
+ * Tracks request counts per client in a fixed rolling window and rejects
+ * requests over the limit with 429. When API-key authentication is configured,
+ * the authenticated `x-api-key` identifies the client; otherwise the client IP
+ * is used. Read-only requests are always allowed. State lives in a plain `Map`
+ * local to the returned middleware, so each `rateLimiter()` instance keeps its
+ * own counters; this is a per-process safeguard and not suitable for
+ * multi-instance deployments without a shared store.
  */
 
 import { NextFunction, Request, Response } from "express";
@@ -31,7 +32,10 @@ export interface RateLimitOptions {
   windowMs?: number;
 }
 
-export function rateLimiter(options: RateLimitOptions = {}) {
+export function rateLimiter(
+  options: RateLimitOptions = {},
+  configuredApiKey?: string,
+) {
   const max = options.max ?? DEFAULT_MAX;
   const windowMs = options.windowMs ?? DEFAULT_WINDOW_MS;
   const buckets = new Map<string, Bucket>();
@@ -42,7 +46,14 @@ export function rateLimiter(options: RateLimitOptions = {}) {
       return;
     }
 
-    const key = req.ip ?? "unknown";
+    // The application installs apiKeyAuth before this middleware, so a header
+    // is used only in deployments where API-key authentication is enabled.
+    const requestApiKey = configuredApiKey
+      ? req.header("x-api-key")
+      : undefined;
+    const key = requestApiKey
+      ? `api-key:${requestApiKey}`
+      : `ip:${req.ip ?? "unknown"}`;
     const now = Date.now();
     const bucket = buckets.get(key);
 

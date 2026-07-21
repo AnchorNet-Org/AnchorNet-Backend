@@ -129,9 +129,11 @@ tracing, plus a small set of defensive security headers (`X-Content-Type-Options
 `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`, `X-DNS-Prefetch-Control`).
 
 Mutating requests (`POST`/`PUT`/`PATCH`/`DELETE`) are rate-limited per client
-IP (default 30 requests/minute, in-memory). Requests over the limit receive
-`429` with code `RATE_LIMITED`. `POST /api/v1/quote` has an additional,
-stricter limit (10 requests/minute) on top of the general one.
+(default 30 requests/minute, in-memory). When `API_KEY` authentication is
+configured, the presented key identifies the client; open deployments continue
+to use the client IP. Requests over the limit receive `429` with code
+`RATE_LIMITED`. `POST /api/v1/quote` has an additional, stricter limit (10
+requests/minute) on top of the general one.
 
 Mutating requests may also send an `Idempotency-Key` header. The first request
 for a given key/method/path runs normally and its response is cached; any
