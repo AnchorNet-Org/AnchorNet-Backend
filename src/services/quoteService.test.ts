@@ -13,22 +13,57 @@ function seed() {
 }
 
 describe("QuoteService", () => {
-  it("routes through the largest anchor first", () => {
+  it("routes through the largest anchor first with the exact portion", () => {
     const quote = new QuoteService(seed()).quote({
       asset: "USDC",
       amount: 500,
     });
 
-    expect(quote.route).toEqual(["big"]);
+    expect(quote.route).toEqual([{ anchor: "big", portion: 500 }]);
   });
 
-  it("adds more anchors until the amount is covered", () => {
+  it("adds more anchors until the amount is covered with correct portions", () => {
     const quote = new QuoteService(seed()).quote({
       asset: "USDC",
       amount: 1200,
     });
 
-    expect(quote.route).toEqual(["big", "mid"]);
+    expect(quote.route).toEqual([
+      { anchor: "big", portion: 1000 },
+      { anchor: "mid", portion: 200 },
+    ]);
+  });
+
+  it("uses a fraction of an anchor when its balance exceeds remaining need", () => {
+    const quote = new QuoteService(seed()).quote({
+      asset: "USDC",
+      amount: 50,
+    });
+
+    expect(quote.route).toEqual([{ anchor: "big", portion: 50 }]);
+  });
+
+  it("drains all anchors when the amount equals the full pool", () => {
+    const quote = new QuoteService(seed()).quote({
+      asset: "USDC",
+      amount: 1500,
+    });
+
+    expect(quote.route).toEqual([
+      { anchor: "big", portion: 1000 },
+      { anchor: "mid", portion: 400 },
+      { anchor: "small", portion: 100 },
+    ]);
+  });
+
+  it("sum of portions equals the requested amount", () => {
+    const quote = new QuoteService(seed()).quote({
+      asset: "USDC",
+      amount: 1200,
+    });
+
+    const total = quote.route.reduce((s, e) => s + e.portion, 0);
+    expect(total).toBe(1200);
   });
 
   it("applies the protocol fee and reports the deliverable", () => {

@@ -68,4 +68,80 @@ describe("applySort", () => {
       applySort(items, { sort: "id", order: "sideways" }, ["id", "amount"]),
     ).toThrow(ApiError);
   });
+
+  it("sorts by two fields with comma-separated sort", () => {
+    const multi = [
+      { id: "a", amount: 10 },
+      { id: "b", amount: 10 },
+      { id: "c", amount: 20 },
+    ];
+    const sorted = applySort(
+      multi,
+      { sort: "amount,id" },
+      ["id", "amount"],
+    );
+    expect(sorted.map((i) => `${i.amount}-${i.id}`)).toEqual([
+      "10-a",
+      "10-b",
+      "20-c",
+    ]);
+  });
+
+  it("sorts by two fields with per-field order", () => {
+    const multi = [
+      { id: "a", amount: 10 },
+      { id: "b", amount: 10 },
+      { id: "c", amount: 20 },
+    ];
+    const sorted = applySort(
+      multi,
+      { sort: "amount,id", order: "desc,asc" },
+      ["id", "amount"],
+    );
+    expect(sorted.map((i) => `${i.amount}-${i.id}`)).toEqual([
+      "20-c",
+      "10-a",
+      "10-b",
+    ]);
+  });
+
+  it("sorts by three fields", () => {
+    const triple = [
+      { id: "a", amount: 10, extra: 1 },
+      { id: "b", amount: 10, extra: 2 },
+      { id: "c", amount: 20, extra: 1 },
+      { id: "d", amount: 10, extra: 1 },
+    ];
+    const sorted = applySort(
+      triple,
+      { sort: "amount,id,extra" },
+      ["id", "amount", "extra"],
+    );
+    expect(sorted.map((i) => `${i.amount}-${i.id}-${i.extra}`)).toEqual([
+      "10-a-1",
+      "10-b-2",
+      "10-d-1",
+      "20-c-1",
+    ]);
+  });
+
+  it("rejects an unknown field anywhere in a multi-field sort", () => {
+    expect(() =>
+      applySort(
+        items,
+        { sort: "id,bogus" },
+        ["id", "amount"],
+      ),
+    ).toThrow(ApiError);
+  });
+
+  it("rejects mismatched sort/order lengths", () => {
+    expect(() =>
+      applySort(
+        items,
+        { sort: "id,amount", order: "asc" },
+        ["id", "amount"],
+      ),
+    ).toThrow(ApiError);
+  });
 });
