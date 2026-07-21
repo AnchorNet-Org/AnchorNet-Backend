@@ -3,38 +3,36 @@
  */
 
 import { Anchor } from "../models/anchor";
+import { InMemoryRepository } from "./inMemoryRepository";
 
-export class AnchorRepository {
-  private readonly anchors = new Map<string, Anchor>();
-
+export class AnchorRepository extends InMemoryRepository<string, Anchor> {
   /** Returns the anchor with `id`, or `undefined`. */
   get(id: string): Anchor | undefined {
-    return this.anchors.get(id);
+    return this.getByKey(id);
   }
 
   /** Returns `true` if an anchor with `id` exists. */
   has(id: string): boolean {
-    return this.anchors.has(id);
+    return this.hasByKey(id);
   }
 
   /** Inserts or replaces an anchor. */
   upsert(anchor: Anchor): Anchor {
-    this.anchors.set(anchor.id, anchor);
-    return anchor;
+    return this.upsertByKey(anchor.id, anchor);
   }
 
   /** Removes an anchor, returning `true` if one existed. */
   remove(id: string): boolean {
-    return this.anchors.delete(id);
+    return this.removeByKey(id);
   }
 
   /** Returns every anchor, sorted by id. */
   all(): Anchor[] {
-    return [...this.anchors.values()].sort((a, b) => a.id.localeCompare(b.id));
+    return this.listAll().sort((a, b) => a.id.localeCompare(b.id));
   }
 
   /** Returns the number of stored anchors. */
   count(): number {
-    return this.anchors.size;
+    return this.countAll();
   }
 }
