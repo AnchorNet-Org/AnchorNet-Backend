@@ -26,8 +26,11 @@ export function requirePositiveNumber(value: unknown, field: string): number {
  * resource id from a route param), returning the parsed number.
  */
 export function requirePositiveInteger(value: unknown, field: string): number {
+  if (typeof value !== "number" && typeof value !== "string") {
+    throw ApiError.badRequest(`"${field}" must be a positive integer`);
+  }
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     throw ApiError.badRequest(`"${field}" must be a positive integer`);
   }
   return parsed;
