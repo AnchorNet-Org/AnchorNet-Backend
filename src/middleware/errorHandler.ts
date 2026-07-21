@@ -60,7 +60,9 @@ export function errorHandler(
     return;
   }
 
-  const message = err instanceof Error ? err.message : "unexpected error";
+  res.locals.error = err;
+  const isProduction = process.env.NODE_ENV === "production";
+  const message = (err instanceof Error && !isProduction) ? err.message : "unexpected error";
   res.status(500).json({
     error: { code: "INTERNAL", message },
   });

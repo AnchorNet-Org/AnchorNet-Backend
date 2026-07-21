@@ -21,6 +21,9 @@ export function requestLogger(
   res.on("finish", () => {
     const ms = Date.now() - start;
     console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${ms}ms`);
+    if (res.locals.error) {
+      console.error(res.locals.error);
+    }
   });
   next();
 }
