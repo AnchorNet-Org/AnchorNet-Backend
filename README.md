@@ -69,8 +69,11 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 
 - `POST /api/v1/quote` – compute a routing quote `{ asset, amount }`. Selects
   anchor liquidity largest-first and applies the protocol fee, returning
-  `{ asset, amount, fee, deliverable, route }`. Returns `400`
-  (`INSUFFICIENT_LIQUIDITY`) when the pool cannot cover the amount.
+  `{ asset, amount, fee, deliverable, route }`. When one anchor cannot cover
+  the full amount, additional anchors are added until the amount is covered.
+  Each entry in `route` contains `{ anchor, portion }` — the anchor identifier
+  and the amount sourced from it. Returns `400` (`INSUFFICIENT_LIQUIDITY`) when
+  the combined pool cannot cover the amount.
 
 ### Anchors
 

@@ -56,7 +56,12 @@ export function buildOpenApiSpec(): Record<string, unknown> {
         get: { summary: "Read the aggregated pool for one asset" },
       },
       "/api/v1/quote": {
-        post: { summary: "Compute a largest-first routing quote" },
+        post: {
+          summary:
+            "Compute a largest-first routing quote. When one anchor cannot cover the full amount, " +
+            "additional anchors are added until the amount is covered. Each route entry includes the " +
+            "anchor and the portion it supplies.",
+        },
       },
       "/api/v1/anchors": {
         post: { summary: "Register an anchor" },
