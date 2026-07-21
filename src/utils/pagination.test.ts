@@ -1,4 +1,5 @@
 import { paginate } from "./pagination";
+import { ApiError } from "../errors/ApiError";
 
 const items = Array.from({ length: 25 }, (_, i) => i + 1);
 
@@ -28,9 +29,59 @@ describe("paginate", () => {
     expect(page.items).toEqual([21, 22, 23, 24, 25]);
   });
 
-  it("falls back to defaults for invalid input", () => {
-    const page = paginate(items, { page: "x", pageSize: "y" });
-    expect(page.page).toBe(1);
-    expect(page.pageSize).toBe(20);
+  it("throws ApiError for a non-numeric page", () => {
+    expect(() => paginate(items, { page: "x" })).toThrow(ApiError);
+    expect(() => paginate(items, { page: "x" })).toThrow(
+      /"page" must be a positive integer/,
+    );
+  });
+
+  it("throws ApiError for a non-numeric pageSize", () => {
+    expect(() => paginate(items, { pageSize: "y" })).toThrow(ApiError);
+  });
+});
+
+describe("paginate — omitted / empty / garbage distinction (#108)", () => {
+  it("uses defaults when page/pageSize are omitted", () => {
+    const p = paginate(items);
+    expect(p.page).toBe(1);
+    expect(p.pageSize).toBe(20);
+  });
+
+  it("uses defaults when page/pageSize are empty strings", () => {
+    const p = paginate(items, { page: "", pageSize: "" });
+    expect(p.page).toBe(1);
+    expect(p.pageSize).toBe(20);
+  });
+
+  it("rejects a fractional page with 400", () => {
+    expect(() => paginate(items, { page: "1.5" })).toThrow(ApiError);
+  });
+
+  it("rejects a negative page with 400", () => {
+    expect(() => paginate(items, { page: "-1" })).toThrow(ApiError);
+  });
+
+  it("rejects page=0 with 400", () => {
+    expect(() => paginate(items, { page: "0" })).toThrow(ApiError);
+  });
+
+  it("rejects an array-valued page with 400", () => {
+    // Express parses ?page=1&page=2 as ["1","2"]
+    expect(() => paginate(items, { page: ["1", "2"] as unknown })).toThrow(
+      ApiError,
+    );
+  });
+});
+
+describe("paginate — preserves documented clamps (#108)", () => {
+  it("still clamps a valid page beyond totalPages to the last page", () => {
+    const p = paginate(items, { page: "99", pageSize: "10" });
+    expect(p.page).toBe(3);
+  });
+
+  it("still clamps pageSize above MAX_PAGE_SIZE", () => {
+    const p = paginate(items, { pageSize: "1000" });
+    expect(p.pageSize).toBe(100);
   });
 });
