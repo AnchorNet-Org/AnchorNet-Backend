@@ -35,5 +35,9 @@ export function requirePositiveInteger(value: unknown, field: string): number {
 
 /** Normalizes an asset code to upper case (e.g. "usdc" -> "USDC"). */
 export function normalizeAsset(value: unknown): string {
-  return requireString(value, "asset").toUpperCase();
+  const asset = requireString(value, "asset").toUpperCase();
+  if (!/^[A-Z0-9]{1,12}$/.test(asset)) {
+    throw ApiError.badRequest(`"asset" must be 1-12 alphanumeric characters`);
+  }
+  return asset;
 }
