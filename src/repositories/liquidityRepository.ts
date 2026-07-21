@@ -7,44 +7,42 @@
  */
 
 import { LiquidityEntry, Pool } from "../models/liquidity";
+import { InMemoryRepository } from "./inMemoryRepository";
 
-export class LiquidityRepository {
-  private readonly entries = new Map<string, LiquidityEntry>();
-
+export class LiquidityRepository extends InMemoryRepository<string, LiquidityEntry> {
   private static key(anchor: string, asset: string): string {
     return `${anchor}:${asset}`;
   }
 
   /** Returns the entry for an anchor/asset pair, or `undefined`. */
   get(anchor: string, asset: string): LiquidityEntry | undefined {
-    return this.entries.get(LiquidityRepository.key(anchor, asset));
+    return this.getByKey(LiquidityRepository.key(anchor, asset));
   }
 
   /** Inserts or replaces an entry. */
   upsert(entry: LiquidityEntry): LiquidityEntry {
-    this.entries.set(LiquidityRepository.key(entry.anchor, entry.asset), entry);
-    return entry;
+    return this.upsertByKey(LiquidityRepository.key(entry.anchor, entry.asset), entry);
   }
 
   /** Removes an entry, returning `true` if one existed. */
   remove(anchor: string, asset: string): boolean {
-    return this.entries.delete(LiquidityRepository.key(anchor, asset));
+    return this.removeByKey(LiquidityRepository.key(anchor, asset));
   }
 
   /** Returns all entries for a given asset. */
   byAsset(asset: string): LiquidityEntry[] {
-    return [...this.entries.values()].filter((e) => e.asset === asset);
+    return this.listAll().filter((e) => e.asset === asset);
   }
 
   /** Returns every stored entry. */
   all(): LiquidityEntry[] {
-    return [...this.entries.values()];
+    return this.listAll();
   }
 
   /** Aggregates all entries into one {@link Pool} per asset. */
   pools(): Pool[] {
     const totals = new Map<string, Pool>();
-    for (const entry of this.entries.values()) {
+    for (const entry of this.listAll()) {
       const pool = totals.get(entry.asset) ?? {
         asset: entry.asset,
         total: 0,
@@ -59,6 +57,6 @@ export class LiquidityRepository {
 
   /** Removes every entry. Primarily used by tests. */
   clear(): void {
-    this.entries.clear();
+    this.clearAll();
   }
 }
