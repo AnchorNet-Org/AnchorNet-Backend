@@ -60,4 +60,38 @@ describe("errorHandler", () => {
     expect(res.body.error.code).toBe("INTERNAL");
     expect(res.body.error.message).toBe("kaboom");
   });
+
+  describe("when NODE_ENV is production", () => {
+    const originalEnv = process.env.NODE_ENV;
+
+    beforeEach(() => {
+      process.env.NODE_ENV = "production";
+    });
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it("hides internal error messages for unexpected errors", async () => {
+      const app = makeApp((_req, _res, next) => next(new Error("secret internal kaboom")));
+
+      const res = await request(app).get("/boom");
+
+      expect(res.status).toBe(500);
+      expect(res.body.error.code).toBe("INTERNAL");
+      expect(res.body.error.message).toBe("unexpected error");
+      expect(res.body.error.stack).toBeUndefined();
+    });
+
+    it("still surfaces intentional messages for ApiErrors", async () => {
+      const app = makeApp((_req, _res, next) => next(ApiError.conflict("intentional conflict")));
+
+      const res = await request(app).get("/boom");
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe("CONFLICT");
+      expect(res.body.error.message).toBe("intentional conflict");
+      expect(res.body.error.stack).toBeUndefined();
+    });
+  });
 });
