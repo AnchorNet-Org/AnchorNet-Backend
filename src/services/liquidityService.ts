@@ -8,6 +8,7 @@
 import { LiquidityRepository } from "../repositories/liquidityRepository";
 import { LiquidityEntry, Pool } from "../models/liquidity";
 import { ApiError } from "../errors/ApiError";
+import { SettlementService } from "./settlementService";
 import {
   normalizeAsset,
   requirePositiveNumber,
@@ -15,7 +16,7 @@ import {
 } from "../utils/validation";
 
 export class LiquidityService {
-  constructor(private readonly repo: LiquidityRepository) {}
+  constructor(private readonly repo: LiquidityRepository, private readonly settlementService?: SettlementService) {}
 
   /**
    * Records `amount` of liquidity from `anchor` in `asset`. If the anchor
@@ -68,6 +69,17 @@ export class LiquidityService {
         `insufficient balance for ${asset}: requested ${amount}, available ${existing.amount}`,
         "INSUFFICIENT_LIQUIDITY",
       );
+    }
+
+    // Ensure withdrawal does not exceed the liquidity available for settlements
+    if (this.settlementService) {
+      const available = this.settlementService.available(asset);
+      if (amount > available) {
+        throw ApiError.badRequest(
+          `withdrawal would reduce available liquidity for ${asset} below zero: requested ${amount}, available ${available}`,
+          "INSUFFICIENT_LIQUIDITY_RESERVED",
+        );
+      }
     }
 
     const remaining = existing.amount - amount;

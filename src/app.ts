@@ -30,7 +30,7 @@ import { securityHeaders } from "./middleware/securityHeaders";
 import { idempotency } from "./middleware/idempotency";
 import { maintenanceMode } from "./middleware/maintenanceMode";
 import { createAuditLog } from "./middleware/auditLog";
-import { loadConfig } from "./config";
+import { loadConfig, Config } from "./config";
 import { buildOpenApiSpec } from "./openapi";
 import { isReady } from "./utils/readiness";
 
@@ -46,23 +46,22 @@ export function createApp(): Express {
   app.use(requestLogger);
   app.use(maintenanceMode(config.maintenanceMode));
   app.use(apiKeyAuth(config.apiKey));
-  app.use(rateLimiter({}, config.apiKey));
-  app.use(idempotency());
+  app.use(rateLimiter({ max: config.rateLimitMax, windowMs: config.rateLimitWindowMs }, config.apiKey));
+  app.use(idempotency({ ttlMs: config.idempotencyTtlMs }));
 
   const audit = createAuditLog();
   app.use(audit.middleware);
 
-  // Shared in-memory state and services for this process.
   const repo = new LiquidityRepository();
-  const liquidity = new LiquidityService(repo);
-  const quotes = new QuoteService(repo, config.feeBps);
   const anchors = new AnchorService(new AnchorRepository());
+  const quotes = new QuoteService(repo, config.feeBps);
   const settlements = new SettlementService(
     new SettlementRepository(),
     repo,
     anchors,
     config.feeBps,
   );
+  const liquidity = new LiquidityService(repo, settlements);
 
   app.get("/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "anchornet-backend" });
@@ -120,4 +119,11 @@ export function createApp(): Express {
   app.use(errorHandler);
 
   return app;
+}
+
+/**
+ * Expose the validated configuration for external consumers.
+ */
+export function getConfig(): Config {
+  return loadConfig();
 }

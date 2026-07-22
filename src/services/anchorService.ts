@@ -10,6 +10,11 @@ import { ApiError } from "../errors/ApiError";
 import { requireString } from "../utils/validation";
 
 export class AnchorService {
+  /** Returns the count of active anchors */
+  countActive(): number {
+    return this.repo.countActive();
+  }
+
   constructor(private readonly repo: AnchorRepository) {}
 
   /** Registers a new anchor. Fails with 409 if the id already exists. */

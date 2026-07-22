@@ -21,6 +21,7 @@ import {
   requirePositiveInteger,
   requirePositiveNumber,
   requireString,
+  requireStringMaxLength,
 } from "../utils/validation";
 
 const DEFAULT_FEE_BPS = 10;
@@ -42,6 +43,10 @@ export class SettlementService {
     const pool = this.liquidity.pools().find((p) => p.asset === asset);
     const total = pool?.total ?? 0;
     return total - (this.reserved.get(asset) ?? 0) - (this.consumed.get(asset) ?? 0);
+  }
+  /** Returns the amount of liquidity reserved for pending settlements for a given asset. */
+  public getReservedLiquidity(asset: string): number {
+    return this.reserved.get(asset) ?? 0;
   }
 
   /** Opens a pending settlement, reserving liquidity from the pool. */
@@ -101,7 +106,7 @@ export class SettlementService {
     const cancelReason =
       reasonInput === undefined
         ? undefined
-        : requireString(reasonInput, "reason");
+        : requireStringMaxLength(reasonInput, "reason", 500);
 
     this.reserved.set(
       settlement.asset,
