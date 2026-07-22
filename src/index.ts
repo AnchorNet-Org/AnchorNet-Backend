@@ -3,12 +3,12 @@
  * Builds the application and starts the HTTP server.
  */
 
-import { createApp } from "./app";
+import { createApp, getConfig } from "./app";
 import { createShutdownHandler } from "./utils/shutdown";
 import { markNotReady } from "./utils/readiness";
 
 const app = createApp();
-const PORT = process.env.PORT ?? 3001;
+const { port: PORT } = getConfig();
 
 if (process.env.NODE_ENV !== "test") {
   const server = app.listen(PORT, () => {

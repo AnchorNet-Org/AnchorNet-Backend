@@ -30,7 +30,7 @@ import { securityHeaders } from "./middleware/securityHeaders";
 import { idempotency } from "./middleware/idempotency";
 import { maintenanceMode } from "./middleware/maintenanceMode";
 import { createAuditLog } from "./middleware/auditLog";
-import { loadConfig } from "./config";
+import { loadConfig, Config } from "./config";
 import { buildOpenApiSpec } from "./openapi";
 import { isReady } from "./utils/readiness";
 
@@ -115,4 +115,11 @@ export function createApp(): Express {
   app.use(errorHandler);
 
   return app;
+}
+
+/**
+ * Expose the validated configuration for external consumers.
+ */
+export function getConfig(): Config {
+  return loadConfig();
 }
