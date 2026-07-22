@@ -46,8 +46,8 @@ export function createApp(): Express {
   app.use(requestLogger);
   app.use(maintenanceMode(config.maintenanceMode));
   app.use(apiKeyAuth(config.apiKey));
-  app.use(rateLimiter({}, config.apiKey));
-  app.use(idempotency());
+  app.use(rateLimiter({ max: config.rateLimitMax, windowMs: config.rateLimitWindowMs }, config.apiKey));
+  app.use(idempotency({ ttlMs: config.idempotencyTtlMs }));
 
   const audit = createAuditLog();
   app.use(audit.middleware);
