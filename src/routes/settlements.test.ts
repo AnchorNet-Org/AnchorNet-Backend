@@ -232,6 +232,21 @@ describe("settlement routes", () => {
         `${opened.body.id},anchorA,USDC,400,${opened.body.fee},pending,${opened.body.createdAt},\n`,
     );
   });
+
+  it("returns 400 for exotic invalid IDs (NaN, Infinity, -0, true, array, object, unsafe integer)", async () => {
+    const app = createApp();
+    await setup(app);
+    const badIds = [NaN, Infinity, -Infinity, -0, "NaN", "Infinity", "9007199254740992", "9007199254740993"];
+    for (const id of badIds) {
+      const resGet = await request(app).get(`/api/v1/settlements/${id}`);
+      expect(resGet.status).toBe(400);
+      expect(resGet.body.error.code).toBe("BAD_REQUEST");
+
+      const resExec = await request(app).post(`/api/v1/settlements/${id}/execute`);
+      expect(resExec.status).toBe(400);
+      expect(resExec.body.error.code).toBe("BAD_REQUEST");
+    }
+  });
 });
 
 describe("GET /api/v1/settlements — pagination validation (#108)", () => {

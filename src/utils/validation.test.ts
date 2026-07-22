@@ -41,8 +41,17 @@ describe("requirePositiveNumber", () => {
     expect(requirePositiveNumber(0.5, "amount")).toBe(0.5);
   });
 
+  it("accepts MAX_SAFE_INTEGER and values beyond it", () => {
+    expect(requirePositiveNumber(Number.MAX_SAFE_INTEGER, "amount")).toBe(Number.MAX_SAFE_INTEGER);
+    expect(requirePositiveNumber(Number.MAX_SAFE_INTEGER + 1, "amount")).toBe(Number.MAX_SAFE_INTEGER + 1);
+  });
+
   it("rejects zero", () => {
     expect(() => requirePositiveNumber(0, "amount")).toThrow(ApiError);
+  });
+
+  it("rejects -0", () => {
+    expect(() => requirePositiveNumber(-0, "amount")).toThrow(ApiError);
   });
 
   it("rejects a negative number", () => {
@@ -57,6 +66,10 @@ describe("requirePositiveNumber", () => {
     expect(() => requirePositiveNumber(Infinity, "amount")).toThrow(ApiError);
   });
 
+  it("rejects -Infinity", () => {
+    expect(() => requirePositiveNumber(-Infinity, "amount")).toThrow(ApiError);
+  });
+
   it("rejects a non-number value", () => {
     expect(() => requirePositiveNumber("5", "amount")).toThrow(ApiError);
   });
@@ -65,14 +78,31 @@ describe("requirePositiveNumber", () => {
 describe("requirePositiveInteger", () => {
   it("coerces a numeric string to a number", () => {
     expect(requirePositiveInteger("42", "id")).toBe(42);
+    expect(requirePositiveInteger("5", "id")).toBe(5);
   });
 
   it("returns a positive integer unchanged", () => {
     expect(requirePositiveInteger(7, "id")).toBe(7);
   });
 
+  it("accepts Number.MAX_SAFE_INTEGER", () => {
+    expect(requirePositiveInteger(Number.MAX_SAFE_INTEGER, "id")).toBe(Number.MAX_SAFE_INTEGER);
+    expect(requirePositiveInteger(String(Number.MAX_SAFE_INTEGER), "id")).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it("rejects values above Number.MAX_SAFE_INTEGER", () => {
+    expect(() => requirePositiveInteger(Number.MAX_SAFE_INTEGER + 1, "id")).toThrow(ApiError);
+    expect(() => requirePositiveInteger(Number.MAX_SAFE_INTEGER + 2, "id")).toThrow(ApiError);
+    expect(() => requirePositiveInteger(String(Number.MAX_SAFE_INTEGER + 1), "id")).toThrow(ApiError);
+    expect(() => requirePositiveInteger(String(Number.MAX_SAFE_INTEGER + 2), "id")).toThrow(ApiError);
+  });
+
   it("rejects zero", () => {
     expect(() => requirePositiveInteger(0, "id")).toThrow(ApiError);
+  });
+
+  it("rejects -0", () => {
+    expect(() => requirePositiveInteger(-0, "id")).toThrow(ApiError);
   });
 
   it("rejects a negative integer", () => {
@@ -83,8 +113,28 @@ describe("requirePositiveInteger", () => {
     expect(() => requirePositiveInteger(1.5, "id")).toThrow(ApiError);
   });
 
+  it("rejects NaN", () => {
+    expect(() => requirePositiveInteger(NaN, "id")).toThrow(ApiError);
+  });
+
+  it("rejects Infinity", () => {
+    expect(() => requirePositiveInteger(Infinity, "id")).toThrow(ApiError);
+  });
+
+  it("rejects -Infinity", () => {
+    expect(() => requirePositiveInteger(-Infinity, "id")).toThrow(ApiError);
+  });
+
   it("rejects a non-numeric string", () => {
     expect(() => requirePositiveInteger("abc", "id")).toThrow(ApiError);
+  });
+
+  it("rejects non-numeric/non-string types", () => {
+    expect(() => requirePositiveInteger(true, "id")).toThrow(ApiError);
+    expect(() => requirePositiveInteger(false, "id")).toThrow(ApiError);
+    expect(() => requirePositiveInteger(null, "id")).toThrow(ApiError);
+    expect(() => requirePositiveInteger([5], "id")).toThrow(ApiError);
+    expect(() => requirePositiveInteger({}, "id")).toThrow(ApiError);
   });
 
   it("includes the field name in the error message", () => {

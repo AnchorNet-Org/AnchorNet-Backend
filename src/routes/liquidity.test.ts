@@ -159,4 +159,16 @@ describe("liquidity routes", () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("BAD_REQUEST");
   });
+
+  it("returns 400 for exotic invalid amounts (NaN, Infinity, string amount)", async () => {
+    const app = createApp();
+    const badAmounts = [NaN, Infinity, -Infinity, -0, "5", "abc", null, [5], {}];
+    for (const amount of badAmounts) {
+      const res = await request(app)
+        .post("/api/v1/liquidity")
+        .send({ anchor: "anchorA", asset: "USDC", amount });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("BAD_REQUEST");
+    }
+  });
 });
