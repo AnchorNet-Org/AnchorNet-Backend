@@ -233,3 +233,35 @@ describe("settlement routes", () => {
     );
   });
 });
+
+describe("GET /api/v1/settlements — pagination validation (#108)", () => {
+  it("returns 400 for ?page=abc", async () => {
+    const app = createApp();
+    const res = await request(app).get("/api/v1/settlements?page=abc");
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+    expect(res.body.error.message).toMatch(/"page" must be a positive integer/);
+  });
+
+  it("returns 400 for ?pageSize=xyz", async () => {
+    const app = createApp();
+    const res = await request(app).get("/api/v1/settlements?pageSize=xyz");
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
+
+  it("returns 200 with default page for omitted params", async () => {
+    const app = createApp();
+    const res = await request(app).get("/api/v1/settlements");
+    expect(res.status).toBe(200);
+    expect(res.body.pagination.page).toBe(1);
+    expect(res.body.pagination.pageSize).toBe(20);
+  });
+
+  it("returns 200 with default page for empty params", async () => {
+    const app = createApp();
+    const res = await request(app).get("/api/v1/settlements?page=&pageSize=");
+    expect(res.status).toBe(200);
+    expect(res.body.pagination.page).toBe(1);
+  });
+});
