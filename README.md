@@ -140,11 +140,84 @@ to use the client IP. Requests over the limit receive `429` with code
 requests/minute) on top of the general one.
 
 Mutating requests may also send an `Idempotency-Key` header. The first request
-for a given key/method/path runs normally and its response is cached; any
+for a given key/method/path combination runs normally and its response is cached; any
 later request reusing the same key (within 24h) replays the original response
 instead of re-running the handler, so retried requests don't double-apply
 side effects (e.g. registering the same anchor twice). State is in-memory and
 per-process.
+
+#### Walkthrough Example
+
+To verify how the idempotency system behaves, you can perform the following walkthrough using `curl`.
+
+1. **Initial request:** Send a POST request to register an anchor with a unique `Idempotency-Key` header. The server processes this request normally and returns a `201` status code:
+
+   ```bash
+   curl -i -X POST http://localhost:3001/api/v1/anchors \
+     -H "Content-Type: application/json" \
+     -H "Idempotency-Key: register-anchor-xyz" \
+     -d '{"id": "anchor-xyz", "name": "Anchor XYZ"}'
+   ```
+
+   Response:
+   ```http
+   HTTP/1.1 201 Created
+   Content-Type: application/json; charset=utf-8
+   x-request-id: df743737-896c-4e4f-8dae-1c08a95302cd
+
+   {
+     "id": "anchor-xyz",
+     "name": "Anchor XYZ",
+     "registeredAt": "2026-07-22T14:17:57.537Z",
+     "active": true
+   }
+   ```
+
+2. **Subsequent replay:** Send the exact same request again using the same `Idempotency-Key`. The server returns the cached `201` response immediately, bypassing the normal handler and avoiding a `409` (which would normally happen for duplicate anchor registration):
+
+   ```bash
+   curl -i -X POST http://localhost:3001/api/v1/anchors \
+     -H "Content-Type: application/json" \
+     -H "Idempotency-Key: register-anchor-xyz" \
+     -d '{"id": "anchor-xyz", "name": "Anchor XYZ"}'
+   ```
+
+   Response (Cached):
+   ```http
+   HTTP/1.1 201 Created
+   Content-Type: application/json; charset=utf-8
+   x-request-id: 4a123f52-1623-429b-ba67-3d0d0d5c2eb0
+
+   {
+     "id": "anchor-xyz",
+     "name": "Anchor XYZ",
+     "registeredAt": "2026-07-22T14:17:57.537Z",
+     "active": true
+   }
+   ```
+
+3. **Mismatched body (Known Gap):** If you reuse the same `Idempotency-Key` but change the request payload (e.g., modifying the `name` field), the server will still return the cached `201` response corresponding to the first payload. Detecting mismatched request bodies (which would ideally return a `422` error) is currently a known gap in this system.
+
+   ```bash
+   curl -i -X POST http://localhost:3001/api/v1/anchors \
+     -H "Content-Type: application/json" \
+     -H "Idempotency-Key: register-anchor-xyz" \
+     -d '{"id": "anchor-xyz", "name": "Anchor XYZ Modified Name"}'
+   ```
+
+   Response (Replayed from the original cached version):
+   ```http
+   HTTP/1.1 201 Created
+   Content-Type: application/json; charset=utf-8
+   x-request-id: 184c8357-3fc3-4e2f-a87c-19042ab804fe
+
+   {
+     "id": "anchor-xyz",
+     "name": "Anchor XYZ",
+     "registeredAt": "2026-07-22T14:17:57.537Z",
+     "active": true
+   }
+   ```
 
 The process shuts down gracefully on `SIGTERM`/`SIGINT`: it stops accepting
 new connections, closes the HTTP server, marks `/health/ready` unready, and
