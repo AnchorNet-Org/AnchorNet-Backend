@@ -66,6 +66,22 @@ describe("settlement routes", () => {
     expect(res.body.cancelReason).toBe("duplicate request");
   });
 
+  it("rejects cancel reason over 500 characters", async () => {
+    const app = createApp();
+    await setup(app);
+    const open = await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 400 });
+
+    const longReason = "a".repeat(501);
+    const res = await request(app)
+      .post(`/api/v1/settlements/${open.body.id}/cancel`)
+      .send({ reason: longReason });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
+
   it("rejects settlement beyond available liquidity", async () => {
     const app = createApp();
     await setup(app);

@@ -46,8 +46,8 @@ export function createApp(): Express {
   app.use(requestLogger);
   app.use(maintenanceMode(config.maintenanceMode));
   app.use(apiKeyAuth(config.apiKey));
-  app.use(rateLimiter({}, config.apiKey));
-  app.use(idempotency());
+  app.use(rateLimiter({ max: config.rateLimitMax, windowMs: config.rateLimitWindowMs }, config.apiKey));
+  app.use(idempotency({ ttlMs: config.idempotencyTtlMs }));
 
   const audit = createAuditLog();
   app.use(audit.middleware);
@@ -108,7 +108,12 @@ export function createApp(): Express {
   app.use("/api/v1/settlements", settlementRouter(settlements));
   app.use(
     "/api/v1/metrics",
-    metricsRouter({ liquidity, anchors, settlements }),
+    metricsRouter({
+      liquidity,
+      anchors,
+      settlements,
+      snapshotIntervalMs: config.metricsSnapshotIntervalMs,
+    }),
   );
 
   app.use(notFoundHandler);

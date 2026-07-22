@@ -96,4 +96,22 @@ describe("loadConfig", () => {
       ).toBe(false);
     },
   );
+
+  it("defaults idempotency and rate limiting options", () => {
+    const config = loadConfig({});
+    expect(config.idempotencyTtlMs).toBe(86_400_000);
+    expect(config.rateLimitMax).toBe(30);
+    expect(config.rateLimitWindowMs).toBe(60_000);
+  });
+
+  it("reads idempotency and rate limiting options from the environment", () => {
+    const config = loadConfig({
+      IDEMPOTENCY_TTL_MS: "3600000",
+      RATE_LIMIT_MAX: "100",
+      RATE_LIMIT_WINDOW_MS: "120000",
+    });
+    expect(config.idempotencyTtlMs).toBe(3600000);
+    expect(config.rateLimitMax).toBe(100);
+    expect(config.rateLimitWindowMs).toBe(120000);
+  });
 });

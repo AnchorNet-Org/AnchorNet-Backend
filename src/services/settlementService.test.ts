@@ -102,6 +102,31 @@ describe("SettlementService", () => {
     expect(() => service.cancel(settlement.id, "   ")).toThrow(ApiError);
   });
 
+  it("rejects a cancel reason exceeding 500 characters", () => {
+    const { service } = harness(1000);
+    const settlement = service.open({
+      anchor: "anchorA",
+      asset: "USDC",
+      amount: 400,
+    });
+
+    const longReason = "a".repeat(501);
+    expect(() => service.cancel(settlement.id, longReason)).toThrow(ApiError);
+  });
+
+  it("accepts a cancel reason at exactly 500 characters", () => {
+    const { service } = harness(1000);
+    const settlement = service.open({
+      anchor: "anchorA",
+      asset: "USDC",
+      amount: 400,
+    });
+
+    const maxReason = "a".repeat(500);
+    const cancelled = service.cancel(settlement.id, maxReason);
+    expect(cancelled.cancelReason).toBe(maxReason);
+  });
+
   it("consumes liquidity on execute", () => {
     const { service } = harness(1000);
     const settlement = service.open({

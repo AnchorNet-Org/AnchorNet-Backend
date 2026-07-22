@@ -24,6 +24,7 @@ export function metricsRouter(deps: {
   liquidity: LiquidityService;
   anchors: AnchorService;
   settlements: SettlementService;
+  snapshotIntervalMs?: number;
 }): Router {
   const router = Router();
   const history = new BoundedHistory<MetricsSnapshot & { timestamp: string }>(
@@ -46,11 +47,26 @@ export function metricsRouter(deps: {
     };
   }
 
-  // Current aggregate metrics. Each read also records a snapshot for
-  // GET /history, giving a rolling view of how the network changes over time.
-  router.get("/", (_req: Request, res: Response) => {
+  function recordSnapshot(): MetricsSnapshot {
     const current = snapshot();
     history.push({ ...current, timestamp: new Date().toISOString() });
+    return current;
+  }
+
+  if (deps.snapshotIntervalMs && deps.snapshotIntervalMs > 0) {
+    const timer = setInterval(() => {
+      recordSnapshot();
+    }, deps.snapshotIntervalMs);
+    timer.unref(); // Ensure interval doesn't block graceful shutdown
+  }
+
+  // Current aggregate metrics. Each read also records a snapshot for
+  // GET /history, giving a rolling view of how the network changes over time.
+  // Note: If snapshotIntervalMs is configured, read-triggered snapshots are still
+  // preserved for backward compatibility, though this may result in more dense
+  // snapshotting if the endpoint is read frequently.
+  router.get("/", (_req: Request, res: Response) => {
+    const current = recordSnapshot();
     res.json(current);
   });
 

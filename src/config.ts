@@ -20,6 +20,14 @@ export interface Config {
   maintenanceMode: boolean;
   /** Current environment name. */
   env: string;
+  /** Optional interval in milliseconds to automatically take metrics snapshots. */
+  metricsSnapshotIntervalMs?: number;
+  /** Milliseconds a cached response remains eligible for replay. */
+  idempotencyTtlMs: number;
+  /** Maximum mutating requests allowed per client within the window. */
+  rateLimitMax: number;
+  /** Length of the rolling window, in milliseconds. */
+  rateLimitWindowMs: number;
 }
 
 const DEFAULT_BODY_LIMIT = "100kb";
@@ -74,5 +82,11 @@ export function loadConfig(
     bodyLimit: env.BODY_LIMIT?.trim() || DEFAULT_BODY_LIMIT,
     maintenanceMode: parseBooleanFlag(env.MAINTENANCE_MODE),
     env: env.NODE_ENV ?? "development",
+    metricsSnapshotIntervalMs: env.METRICS_SNAPSHOT_INTERVAL_MS
+      ? parseInt(env.METRICS_SNAPSHOT_INTERVAL_MS, 10)
+      : undefined,
+    idempotencyTtlMs: intFromEnv(env.IDEMPOTENCY_TTL_MS, 86_400_000),
+    rateLimitMax: intFromEnv(env.RATE_LIMIT_MAX, 30),
+    rateLimitWindowMs: intFromEnv(env.RATE_LIMIT_WINDOW_MS, 60_000),
   };
 }
