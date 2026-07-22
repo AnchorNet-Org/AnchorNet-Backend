@@ -13,6 +13,15 @@ export function requireString(value: unknown, field: string): string {
   return value.trim();
 }
 
+/** Ensures `value` is a non-empty string up to a maximum length. */
+export function requireStringMaxLength(value: unknown, field: string, maxLength: number): string {
+  const str = requireString(value, field);
+  if (str.length > maxLength) {
+    throw ApiError.badRequest(`"${field}" must be at most ${maxLength} characters`);
+  }
+  return str;
+}
+
 /** Ensures `value` is a finite number greater than zero. */
 export function requirePositiveNumber(value: unknown, field: string): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {

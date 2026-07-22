@@ -21,6 +21,7 @@ import {
   requirePositiveInteger,
   requirePositiveNumber,
   requireString,
+  requireStringMaxLength,
 } from "../utils/validation";
 
 const DEFAULT_FEE_BPS = 10;
@@ -101,7 +102,7 @@ export class SettlementService {
     const cancelReason =
       reasonInput === undefined
         ? undefined
-        : requireString(reasonInput, "reason");
+        : requireStringMaxLength(reasonInput, "reason", 500);
 
     this.reserved.set(
       settlement.asset,
