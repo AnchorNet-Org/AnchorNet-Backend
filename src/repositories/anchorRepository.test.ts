@@ -37,4 +37,27 @@ describe("AnchorRepository", () => {
     expect(repo.remove("anchorA")).toBe(false);
     expect(repo.count()).toBe(0);
   });
+  it("tracks active and inactive counts correctly", () => {
+    const repo = new AnchorRepository();
+    const a1 = anchor("a1", "A1"); // active
+    const a2 = { ...anchor("a2", "A2"), active: false };
+    const a3 = { ...anchor("a3", "A3"), active: false };
+
+    repo.upsert(a1);
+    repo.upsert(a2);
+    repo.upsert(a3);
+    expect(repo.countActive()).toBe(1);
+    expect(repo.countInactive()).toBe(2);
+
+    // Reactivate a2
+    repo.upsert({ ...a2, active: true });
+    expect(repo.countActive()).toBe(2);
+    expect(repo.countInactive()).toBe(1);
+
+    // Remove a3
+    repo.remove("a3");
+    expect(repo.countActive()).toBe(2);
+    expect(repo.countInactive()).toBe(0);
+  });
+
 });
