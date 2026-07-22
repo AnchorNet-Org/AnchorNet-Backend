@@ -52,17 +52,16 @@ export function createApp(): Express {
   const audit = createAuditLog();
   app.use(audit.middleware);
 
-  // Shared in-memory state and services for this process.
   const repo = new LiquidityRepository();
-  const liquidity = new LiquidityService(repo);
-  const quotes = new QuoteService(repo, config.feeBps);
   const anchors = new AnchorService(new AnchorRepository());
+  const quotes = new QuoteService(repo, config.feeBps);
   const settlements = new SettlementService(
     new SettlementRepository(),
     repo,
     anchors,
     config.feeBps,
   );
+  const liquidity = new LiquidityService(repo, settlements);
 
   app.get("/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "anchornet-backend" });
