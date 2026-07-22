@@ -108,7 +108,12 @@ export function createApp(): Express {
   app.use("/api/v1/settlements", settlementRouter(settlements));
   app.use(
     "/api/v1/metrics",
-    metricsRouter({ liquidity, anchors, settlements }),
+    metricsRouter({
+      liquidity,
+      anchors,
+      settlements,
+      snapshotIntervalMs: config.metricsSnapshotIntervalMs,
+    }),
   );
 
   app.use(notFoundHandler);

@@ -59,4 +59,36 @@ describe("metrics route", () => {
     });
     expect(typeof res.body.snapshots[0].timestamp).toBe("string");
   });
+
+  it("records snapshots on a fixed interval when configured", async () => {
+    jest.useFakeTimers();
+    try {
+      const originalEnv = process.env.METRICS_SNAPSHOT_INTERVAL_MS;
+      process.env.METRICS_SNAPSHOT_INTERVAL_MS = "1000";
+      
+      const app = createApp();
+      await seed(app);
+
+      // Verify no history initially
+      let res = await request(app).get("/api/v1/metrics/history");
+      expect(res.body.snapshots).toHaveLength(0);
+
+      // Advance time by 3 seconds (should trigger 3 snapshots)
+      jest.advanceTimersByTime(3000);
+
+      // Verify history has been populated
+      res = await request(app).get("/api/v1/metrics/history");
+      expect(res.body.snapshots).toHaveLength(3);
+      expect(res.body.snapshots[0].anchors).toBe(1);
+
+      // Restore env
+      if (originalEnv === undefined) {
+        delete process.env.METRICS_SNAPSHOT_INTERVAL_MS;
+      } else {
+        process.env.METRICS_SNAPSHOT_INTERVAL_MS = originalEnv;
+      }
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });

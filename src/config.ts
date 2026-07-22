@@ -20,6 +20,8 @@ export interface Config {
   maintenanceMode: boolean;
   /** Current environment name. */
   env: string;
+  /** Optional interval in milliseconds to automatically take metrics snapshots. */
+  metricsSnapshotIntervalMs?: number;
 }
 
 const DEFAULT_BODY_LIMIT = "100kb";
@@ -74,5 +76,8 @@ export function loadConfig(
     bodyLimit: env.BODY_LIMIT?.trim() || DEFAULT_BODY_LIMIT,
     maintenanceMode: parseBooleanFlag(env.MAINTENANCE_MODE),
     env: env.NODE_ENV ?? "development",
+    metricsSnapshotIntervalMs: env.METRICS_SNAPSHOT_INTERVAL_MS
+      ? parseInt(env.METRICS_SNAPSHOT_INTERVAL_MS, 10)
+      : undefined,
   };
 }
