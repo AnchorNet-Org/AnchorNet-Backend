@@ -37,7 +37,7 @@ export function metricsRouter(deps: {
 
     return {
       anchors: anchors.length,
-      activeAnchors: anchors.filter((a) => a.active).length,
+      activeAnchors: deps.anchors.countActive(),
       pools: pools.length,
       totalLiquidity: pools.reduce((sum, p) => sum + p.total, 0),
       settlements: settlements.length,
