@@ -44,6 +44,10 @@ export class SettlementService {
     const total = pool?.total ?? 0;
     return total - (this.reserved.get(asset) ?? 0) - (this.consumed.get(asset) ?? 0);
   }
+  /** Returns the amount of liquidity reserved for pending settlements for a given asset. */
+  public getReservedLiquidity(asset: string): number {
+    return this.reserved.get(asset) ?? 0;
+  }
 
   /** Opens a pending settlement, reserving liquidity from the pool. */
   open(input: { anchor: unknown; asset: unknown; amount: unknown }): Settlement {

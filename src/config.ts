@@ -22,6 +22,12 @@ export interface Config {
   env: string;
   /** Optional interval in milliseconds to automatically take metrics snapshots. */
   metricsSnapshotIntervalMs?: number;
+  /** Milliseconds a cached response remains eligible for replay. */
+  idempotencyTtlMs: number;
+  /** Maximum mutating requests allowed per client within the window. */
+  rateLimitMax: number;
+  /** Length of the rolling window, in milliseconds. */
+  rateLimitWindowMs: number;
 }
 
 const DEFAULT_BODY_LIMIT = "100kb";
@@ -79,5 +85,8 @@ export function loadConfig(
     metricsSnapshotIntervalMs: env.METRICS_SNAPSHOT_INTERVAL_MS
       ? parseInt(env.METRICS_SNAPSHOT_INTERVAL_MS, 10)
       : undefined,
+    idempotencyTtlMs: intFromEnv(env.IDEMPOTENCY_TTL_MS, 86_400_000),
+    rateLimitMax: intFromEnv(env.RATE_LIMIT_MAX, 30),
+    rateLimitWindowMs: intFromEnv(env.RATE_LIMIT_WINDOW_MS, 60_000),
   };
 }

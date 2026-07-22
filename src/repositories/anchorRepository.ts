@@ -6,6 +6,10 @@ import { Anchor } from "../models/anchor";
 import { InMemoryRepository } from "./inMemoryRepository";
 
 export class AnchorRepository extends InMemoryRepository<string, Anchor> {
+  /** Set of ids for active anchors */
+  private activeIds: Set<string> = new Set();
+  /** Set of ids for inactive anchors */
+  private inactiveIds: Set<string> = new Set();
   /** Returns the anchor with `id`, or `undefined`. */
   get(id: string): Anchor | undefined {
     return this.getByKey(id);
@@ -18,12 +22,29 @@ export class AnchorRepository extends InMemoryRepository<string, Anchor> {
 
   /** Inserts or replaces an anchor. */
   upsert(anchor: Anchor): Anchor {
-    return this.upsertByKey(anchor.id, anchor);
+    // Update active/inactive index sets based on the anchor's status
+    const wasPresent = this.hasByKey(anchor.id);
+    if (wasPresent) {
+      const existing = this.getByKey(anchor.id);
+      if (existing) {
+        if (existing.active) this.activeIds.delete(anchor.id);
+        else this.inactiveIds.delete(anchor.id);
+      }
+    }
+    const result = this.upsertByKey(anchor.id, anchor);
+    if (anchor.active) this.activeIds.add(anchor.id);
+    else this.inactiveIds.add(anchor.id);
+    return result;
   }
 
   /** Removes an anchor, returning `true` if one existed. */
   remove(id: string): boolean {
-    return this.removeByKey(id);
+    const existed = this.removeByKey(id);
+    if (existed) {
+      this.activeIds.delete(id);
+      this.inactiveIds.delete(id);
+    }
+    return existed;
   }
 
   /** Returns every anchor, sorted by id. */
@@ -34,5 +55,15 @@ export class AnchorRepository extends InMemoryRepository<string, Anchor> {
   /** Returns the number of stored anchors. */
   count(): number {
     return this.countAll();
+  }
+
+  /** O(1) count of active anchors */
+  countActive(): number {
+    return this.activeIds.size;
+  }
+
+  /** O(1) count of inactive anchors */
+  countInactive(): number {
+    return this.inactiveIds.size;
   }
 }
