@@ -33,11 +33,15 @@ describe("loadConfig", () => {
   });
 
   it("throws when FEE_BPS is negative", () => {
-    expect(() => loadConfig({ FEE_BPS: "-1" })).toThrow(/FEE_BPS/);
+    expect(() => loadConfig({ FEE_BPS: "-1" })).toThrow(
+      "FEE_BPS must be between 0 and 10000 (got -1)",
+    );
   });
 
   it("throws when FEE_BPS exceeds 10000", () => {
-    expect(() => loadConfig({ FEE_BPS: "10001" })).toThrow(/FEE_BPS/);
+    expect(() => loadConfig({ FEE_BPS: "10001" })).toThrow(
+      "FEE_BPS must be between 0 and 10000 (got 10001)",
+    );
   });
 
   it("accepts the boundary FEE_BPS values", () => {
@@ -91,9 +95,9 @@ describe("loadConfig", () => {
   it.each(["0", "false", "", undefined])(
     "leaves maintenance mode disabled for MAINTENANCE_MODE=%p",
     (value) => {
-      expect(
-        loadConfig({ MAINTENANCE_MODE: value }).maintenanceMode,
-      ).toBe(false);
+      expect(loadConfig({ MAINTENANCE_MODE: value }).maintenanceMode).toBe(
+        false,
+      );
     },
   );
 
