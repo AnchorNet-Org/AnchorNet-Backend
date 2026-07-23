@@ -1,6 +1,11 @@
 import express, { Express } from "express";
 import request from "supertest";
-import { createAuditLog } from "./auditLog";
+import {
+  createAuditLog,
+  isSensitiveField,
+  redactSensitiveData,
+  SENSITIVE_FIELD_DENYLIST,
+} from "./auditLog";
 
 function makeApp(audit: ReturnType<typeof createAuditLog>): Express {
   const app = express();
@@ -45,3 +50,71 @@ describe("createAuditLog", () => {
     expect(audit.entries()).toHaveLength(2);
   });
 });
+
+describe("audit log sensitive data redaction", () => {
+  it("includes x-api-key, authorization, and secret fields in denylist", () => {
+    expect(SENSITIVE_FIELD_DENYLIST.has("x-api-key")).toBe(true);
+    expect(SENSITIVE_FIELD_DENYLIST.has("authorization")).toBe(true);
+    expect(SENSITIVE_FIELD_DENYLIST.has("password")).toBe(true);
+    expect(SENSITIVE_FIELD_DENYLIST.has("secret")).toBe(true);
+    expect(SENSITIVE_FIELD_DENYLIST.has("token")).toBe(true);
+  });
+
+  it("matches denylisted fields case-insensitively", () => {
+    expect(isSensitiveField("X-API-KEY")).toBe(true);
+    expect(isSensitiveField("x-api-key")).toBe(true);
+    expect(isSensitiveField("Authorization")).toBe(true);
+    expect(isSensitiveField("AUTHORIZATION")).toBe(true);
+    expect(isSensitiveField("Secret")).toBe(true);
+  });
+
+  it("redacts denylisted headers and body fields while preserving non-sensitive data", () => {
+    const sensitiveData = {
+      method: "POST",
+      path: "/api/v1/anchors",
+      headers: {
+        "x-api-key": "secret_key_12345",
+        "Authorization": "Bearer token_xyz",
+        "content-type": "application/json",
+      },
+      body: {
+        id: "anchor-1",
+        name: "Test Anchor",
+        password: "super_secret_password",
+        nested: {
+          token: "nested_token_abc",
+          safeField: "safeValue",
+        },
+      },
+    };
+
+    const redacted = redactSensitiveData(sensitiveData);
+
+    expect(redacted).toEqual({
+      method: "POST",
+      path: "/api/v1/anchors",
+      headers: {
+        "x-api-key": "[REDACTED]",
+        "Authorization": "[REDACTED]",
+        "content-type": "application/json",
+      },
+      body: {
+        id: "anchor-1",
+        name: "Test Anchor",
+        password: "[REDACTED]",
+        nested: {
+          token: "[REDACTED]",
+          safeField: "safeValue",
+        },
+      },
+    });
+  });
+
+  it("handles null or primitive values gracefully", () => {
+    expect(redactSensitiveData(null)).toBeNull();
+    expect(redactSensitiveData(undefined)).toBeUndefined();
+    expect(redactSensitiveData("plain_string")).toBe("plain_string");
+    expect(redactSensitiveData(123)).toBe(123);
+  });
+});
+
