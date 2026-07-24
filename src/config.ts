@@ -2,6 +2,8 @@
  * Typed application configuration loaded from environment variables.
  */
 
+import { URL } from "node:url";
+
 export interface Config {
   /** Port the HTTP server binds to. */
   port: number;
@@ -40,7 +42,9 @@ function intFromEnv(value: string | undefined, fallback: number): number {
 
 /**
  * Parses a comma-separated `CORS_ORIGIN` value into a list of allowed
- * origins, trimming whitespace and dropping empty entries. Returns
+ * origins, trimming whitespace and dropping empty entries. Only HTTP(S)
+ * origins are accepted; paths, credentials, queries, and fragments are
+ * rejected so configuration mistakes fail visibly at startup. Returns
  * `undefined` when unset or when every entry is blank.
  */
 function parseCorsOrigins(value: string | undefined): string[] | undefined {
@@ -49,6 +53,33 @@ function parseCorsOrigins(value: string | undefined): string[] | undefined {
     .split(",")
     .map((origin) => origin.trim())
     .filter((origin) => origin !== "");
+
+  for (const origin of origins) {
+    let parsed: URL;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      throw new Error(
+        `CORS_ORIGIN contains an invalid origin: ${JSON.stringify(origin)}`,
+      );
+    }
+
+    const isHttpOrigin =
+      parsed.protocol === "http:" || parsed.protocol === "https:";
+    const hasOriginOnly =
+      parsed.username === "" &&
+      parsed.password === "" &&
+      parsed.pathname === "/" &&
+      parsed.search === "" &&
+      parsed.hash === "";
+
+    if (!isHttpOrigin || !hasOriginOnly) {
+      throw new Error(
+        `CORS_ORIGIN contains an invalid origin: ${JSON.stringify(origin)}`,
+      );
+    }
+  }
+
   return origins.length > 0 ? origins : undefined;
 }
 

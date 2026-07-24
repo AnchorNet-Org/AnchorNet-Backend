@@ -237,7 +237,7 @@ operators can pause writes without taking the whole API down.
 | `PORT` | `3001` | HTTP port |
 | `FEE_BPS` | `10` | Protocol fee in basis points; must be `0`-`10000` or the process fails to start |
 | `API_KEY` | – | If set, mutating requests must send `x-api-key` |
-| `CORS_ORIGIN` | – | Comma-separated allowlist of origins; unset allows any origin |
+| `CORS_ORIGIN` | – | Comma-separated allowlist of HTTP(S) origins, including scheme and optional port; invalid entries fail startup, while unset allows any origin |
 | `BODY_LIMIT` | `100kb` | Maximum accepted JSON request body size (`express.json` `limit` syntax) |
 | `MAINTENANCE_MODE` | `false` | When `1`/`true`, mutating requests are rejected with `503` |
 | `NODE_ENV` | `development` | Environment name |
