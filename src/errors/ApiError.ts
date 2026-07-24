@@ -35,6 +35,13 @@ export class ApiError extends Error {
     return new ApiError(429, code, message);
   }
 
+  static idempotencyKeyReuse(
+    message: string,
+    code = "IDEMPOTENCY_KEY_REUSE",
+  ): ApiError {
+    return new ApiError(422, code, message);
+  }
+
   static serviceUnavailable(
     message: string,
     code = "SERVICE_UNAVAILABLE",
