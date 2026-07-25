@@ -46,7 +46,7 @@ export function createApp(): Express {
   app.use(requestLogger);
   app.use(maintenanceMode(config.maintenanceMode));
   app.use(apiKeyAuth(config.apiKey));
-  app.use(rateLimiter({ max: config.rateLimitMax, windowMs: config.rateLimitWindowMs }, config.apiKey));
+  app.use(rateLimiter({ max: config.rateLimitMax, windowMs: config.rateLimitWindowMs, skipPaths: ["/api/v1/quote"] }, config.apiKey));
   app.use(idempotency({ ttlMs: config.idempotencyTtlMs }));
 
   const audit = createAuditLog();
@@ -96,8 +96,16 @@ export function createApp(): Express {
   });
 
   app.use("/api/v1/liquidity", liquidityRouter(liquidity));
-  // The quote endpoint recomputes routing on every call, so it gets a
-  // stricter rate limit than the general default in addition to it.
+  // Quote requests are excluded from the global rate limiter and subject
+  // only to this stricter 10 req/min limit.  The global limiter still
+  // applies to all other mutating routes.
+  //
+  // NOTE: This is the recommended interpretation — each endpoint should
+  // enforce its own limit independently.  The tradeoff is that a client
+  // doing 10 quote POSTs/min + 30 other mutating requests/min would total
+  // 40 mutating requests/min, exceeding the global limiter's 30/min budget.
+  // If total-backend-write-volume capping is desired instead, remove
+  // skipPaths and document the dual-limiter intent explicitly.
   app.use(
     "/api/v1/quote",
     rateLimiter({ max: 10, windowMs: 60_000 }, config.apiKey),

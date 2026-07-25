@@ -30,6 +30,17 @@ export interface RateLimitOptions {
   max?: number;
   /** Length of the rolling window, in milliseconds. */
   windowMs?: number;
+  /**
+   * Paths to exclude from rate-limit accounting.  A request is skipped when
+   * its path exactly matches an entry or starts with the entry followed by
+   * "/".
+   *
+   * Path matching is relative to the mount point.  This works correctly
+   * because the global limiter is mounted at the application root, where
+   * `req.path` equals the full URL path.  Reuse on a sub-path mount would
+   * require the exclusion list to account for the mount prefix.
+   */
+  skipPaths?: string[];
 }
 
 export function rateLimiter(
@@ -44,6 +55,14 @@ export function rateLimiter(
     if (!MUTATING_METHODS.has(req.method)) {
       next();
       return;
+    }
+
+    if (options.skipPaths) {
+      const p = req.path;
+      if (options.skipPaths.some((s) => p === s || p.startsWith(s + "/"))) {
+        next();
+        return;
+      }
     }
 
     // The application installs apiKeyAuth before this middleware, so a header
