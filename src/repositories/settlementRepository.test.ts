@@ -1,5 +1,5 @@
 import { SettlementRepository } from "./settlementRepository";
-import { Settlement } from "../models/settlement";
+import { Settlement, isSettlementStatus } from "../models/settlement";
 
 function draft(anchor: string, amount: number): Omit<Settlement, "id"> {
   return {
@@ -47,5 +47,51 @@ describe("SettlementRepository", () => {
 
     expect(repo.byAnchor("anchorA")).toHaveLength(2);
     expect(repo.count()).toBe(3);
+  });
+});
+
+describe("isSettlementStatus", () => {
+  it("accepts all valid statuses", () => {
+    expect(isSettlementStatus("pending")).toBe(true);
+    expect(isSettlementStatus("executed")).toBe(true);
+    expect(isSettlementStatus("cancelled")).toBe(true);
+  });
+
+  it("rejects invalid strings", () => {
+    expect(isSettlementStatus("unknown")).toBe(false);
+    expect(isSettlementStatus("")).toBe(false);
+  });
+
+  it("rejects near-miss strings (exact match only)", () => {
+    expect(isSettlementStatus("Pending")).toBe(false);
+    expect(isSettlementStatus("pending ")).toBe(false);
+    expect(isSettlementStatus("PENDING")).toBe(false);
+  });
+
+  it("rejects non-string values", () => {
+    expect(isSettlementStatus(123)).toBe(false);
+    expect(isSettlementStatus(null)).toBe(false);
+    expect(isSettlementStatus(undefined)).toBe(false);
+    expect(isSettlementStatus({})).toBe(false);
+  });
+});
+
+describe("SettlementRepository rejects invalid status", () => {
+  it("save throws on invalid status", () => {
+    const repo = new SettlementRepository();
+    const created = repo.create(draft("anchorA", 100));
+    const invalid = { ...created, status: "bogus" } as unknown as Settlement;
+
+    expect(() => repo.save(invalid)).toThrow(/Invalid settlement status/);
+  });
+
+  it("create throws on invalid status", () => {
+    const repo = new SettlementRepository();
+    const invalid = {
+      ...draft("anchorA", 100),
+      status: "bogus",
+    } as unknown as Omit<Settlement, "id">;
+
+    expect(() => repo.create(invalid)).toThrow(/Invalid settlement status/);
   });
 });

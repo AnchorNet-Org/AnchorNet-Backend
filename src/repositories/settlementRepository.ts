@@ -2,7 +2,7 @@
  * In-memory store for settlements with an auto-incrementing id.
  */
 
-import { Settlement } from "../models/settlement";
+import { Settlement, isSettlementStatus } from "../models/settlement";
 import { InMemoryRepository } from "./inMemoryRepository";
 
 export class SettlementRepository extends InMemoryRepository<number, Settlement> {
@@ -15,6 +15,13 @@ export class SettlementRepository extends InMemoryRepository<number, Settlement>
 
   /** Stores a settlement under a freshly allocated id. */
   create(settlement: Omit<Settlement, "id">): Settlement {
+    if (!isSettlementStatus(settlement.status)) {
+      // Interpolate only the status, not the whole object, to avoid leaking
+      // untrusted input into logs.
+      throw new Error(
+        `Invalid settlement status: ${String(settlement.status)}`,
+      );
+    }
     const id = this.generateId();
     const created: Settlement = { ...settlement, id };
     // Update anchor index
@@ -26,6 +33,11 @@ export class SettlementRepository extends InMemoryRepository<number, Settlement>
 
   /** Replaces an existing settlement (e.g. after a status change). */
   save(settlement: Settlement): Settlement {
+    if (!isSettlementStatus(settlement.status)) {
+      throw new Error(
+        `Invalid settlement status: ${String(settlement.status)}`,
+      );
+    }
     // Ensure anchor index consistency (anchor is immutable)
     const existing = this.getByKey(settlement.id);
     if (existing && existing.anchor !== settlement.anchor) {

@@ -5,6 +5,22 @@
 /** Lifecycle state of a settlement, mirroring the on-chain contract. */
 export type SettlementStatus = "pending" | "executed" | "cancelled";
 
+const VALID_STATUSES: readonly SettlementStatus[] = [
+  "pending",
+  "executed",
+  "cancelled",
+];
+
+/** Runtime type guard: returns `true` when `value` is a valid {@link SettlementStatus}. */
+export function isSettlementStatus(
+  value: unknown,
+): value is SettlementStatus {
+  return (
+    typeof value === "string" &&
+    (VALID_STATUSES as readonly string[]).includes(value)
+  );
+}
+
 /** A settlement that draws liquidity from a pool to settle a payment. */
 export interface Settlement {
   /** Monotonic identifier assigned by the service. */
