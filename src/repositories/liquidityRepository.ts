@@ -34,6 +34,11 @@ export class LiquidityRepository extends InMemoryRepository<string, LiquidityEnt
     return this.listAll().filter((e) => e.asset === asset);
   }
 
+  /** Returns all entries for a given anchor. */
+  byAnchor(anchor: string): LiquidityEntry[] {
+    return this.listAll().filter((e) => e.anchor === anchor);
+  }
+
   /** Returns every stored entry. */
   all(): LiquidityEntry[] {
     return this.listAll();
