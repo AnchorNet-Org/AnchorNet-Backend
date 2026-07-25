@@ -45,6 +45,22 @@ export class SettlementRepository extends InMemoryRepository<number, Settlement>
     return this.getByKey(id);
   }
 
+  /** Removes a settlement, returning `true` if one existed. */
+  remove(id: number): boolean {
+    const existing = this.getByKey(id);
+    const existed = this.removeByKey(id);
+    if (existed && existing) {
+      const anchorSet = this.anchorIndex.get(existing.anchor);
+      if (anchorSet) {
+        anchorSet.delete(id);
+        if (anchorSet.size === 0) {
+          this.anchorIndex.delete(existing.anchor);
+        }
+      }
+    }
+    return existed;
+  }
+
   /** Returns every settlement, most recent first. */
   all(): Settlement[] {
     return this.listAll().sort((a, b) => b.id - a.id);
