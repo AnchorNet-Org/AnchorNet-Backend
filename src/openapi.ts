@@ -44,7 +44,10 @@ export function buildOpenApiSpec(): Record<string, unknown> {
           summary:
             "Record (or accumulate) liquidity for an anchor/asset pair",
         },
-        get: { summary: "List aggregated liquidity pools" },
+        get: { 
+          summary: "List aggregated liquidity pools",
+          description: "Returns an array of Pool objects, each containing asset, total, anchors count, and a lastUpdated timestamp.",
+        },
       },
       "/api/v1/liquidity/withdraw": {
         post: { summary: "Withdraw previously recorded liquidity" },
@@ -53,7 +56,10 @@ export function buildOpenApiSpec(): Record<string, unknown> {
         get: { summary: "List raw per-anchor liquidity entries" },
       },
       "/api/v1/liquidity/{asset}": {
-        get: { summary: "Read the aggregated pool for one asset" },
+        get: { 
+          summary: "Read the aggregated pool for one asset",
+          description: "Returns a single Pool object containing asset, total, anchors count, and a lastUpdated timestamp.",
+        },
       },
       "/api/v1/liquidity/{anchor}/{asset}": {
         delete: {

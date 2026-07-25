@@ -37,14 +37,14 @@ describe("LiquidityRepository", () => {
     expect(repo.byAsset("EURC")).toHaveLength(1);
   });
 
-  it("aggregates pools per asset", () => {
+  it("aggregates pools per asset and computes lastUpdated", () => {
     const repo = new LiquidityRepository();
-    repo.upsert(entry("anchorA", "USDC", 100));
-    repo.upsert(entry("anchorB", "USDC", 50));
+    repo.upsert({ ...entry("anchorA", "USDC", 100), updatedAt: "2024-01-01T00:00:00.000Z" });
+    repo.upsert({ ...entry("anchorB", "USDC", 50), updatedAt: "2024-01-02T00:00:00.000Z" });
 
     const pools = repo.pools();
     const usdc = pools.find((p) => p.asset === "USDC");
-    expect(usdc).toEqual({ asset: "USDC", total: 150, anchors: 2 });
+    expect(usdc).toEqual({ asset: "USDC", total: 150, anchors: 2, lastUpdated: "2024-01-02T00:00:00.000Z" });
   });
 
   it("removes entries", () => {
