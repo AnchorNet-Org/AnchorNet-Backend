@@ -50,7 +50,7 @@ Server runs at `http://localhost:3001` by default. Set `PORT` to override.
 - `GET /api/v1/openapi.json` – hand-maintained OpenAPI-shaped description of
   every route below
 - `GET /api/v1/audit` – the most recent mutating requests (method, path,
-  status, request id, timestamp), last 200 in memory
+  status, request id, timestamp), last 200 in memory; sensitive fields/headers (such as `x-api-key`, `authorization`, `secret`) are automatically redacted via a denylist
 
 ### Liquidity
 
