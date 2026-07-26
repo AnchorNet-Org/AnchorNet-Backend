@@ -92,6 +92,53 @@ describe("AnchorService", () => {
     expect(() => service.update("anchorA", { name: "  " })).toThrow(ApiError);
   });
 
+  it("rejects an update carrying an unknown field, naming it (#160)", () => {
+    const service = makeService();
+    service.register({ id: "anchorA" });
+
+    // A caller sending { name, active } must not get a silent partial update.
+    expect(() =>
+      service.update("anchorA", { name: "x", active: false } as {
+        name?: unknown;
+      }),
+    ).toThrow(/unexpected field\(s\) in anchor update: "active"/);
+
+    // The name change must NOT have been applied.
+    expect(service.get("anchorA").name).toBe("anchorA");
+    expect(service.get("anchorA").active).toBe(true);
+  });
+
+  it("rejects a typo of a real field instead of masking it (#160)", () => {
+    const service = makeService();
+    service.register({ id: "anchorA" });
+
+    // `enabled` is a plausible typo of `active`; strict body catches it.
+    expect(() =>
+      service.update("anchorA", { name: "x", enabled: true } as {
+        name?: unknown;
+      }),
+    ).toThrow(/"enabled"/);
+  });
+
+  it("names every unexpected field when several are sent (#160)", () => {
+    const service = makeService();
+    service.register({ id: "anchorA" });
+
+    expect(() =>
+      service.update("anchorA", { active: false, id: "other" } as {
+        name?: unknown;
+      }),
+    ).toThrow(/"active", "id"/);
+  });
+
+  it("still accepts a name-only update unchanged (#160)", () => {
+    const service = makeService();
+    service.register({ id: "anchorA", name: "Old" });
+
+    const updated = service.update("anchorA", { name: "New" });
+    expect(updated.name).toBe("New");
+  });
+
   it("returns every anchor when no status filter is given", () => {
     const service = makeService();
     service.register({ id: "anchorA" });
