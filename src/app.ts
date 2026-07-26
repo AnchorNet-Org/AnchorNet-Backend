@@ -37,6 +37,7 @@ import { isReady } from "./utils/readiness";
 export function createApp(): Express {
   const app = express();
   const config = loadConfig();
+  app.set('trust proxy', 1); // Ensure req.ip reflects real client IP behind reverse proxy (#120)
 
   app.use(cors(config.corsOrigins ? { origin: config.corsOrigins } : undefined));
   app.use(compression());
