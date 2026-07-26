@@ -151,4 +151,35 @@ describe("rateLimiter", () => {
       expect.objectContaining({ status: 429, code: "RATE_LIMITED" }),
     );
   });
+
+  it("skips rate limiting for paths in skipPaths", async () => {
+    const app = express();
+    app.set("trust proxy", true);
+    app.use(rateLimiter({ max: 2, windowMs: 1000, skipPaths: ["/skip-me"] }));
+    app.post("/skip-me", (_req, res) => res.status(201).json({ ok: true }));
+    app.post("/other", (_req, res) => res.status(201).json({ ok: true }));
+    app.use(errorHandler);
+
+    for (let i = 0; i < 5; i++) {
+      const res = await request(app).post("/skip-me");
+      expect(res.status).toBe(201);
+    }
+
+    await request(app).post("/other");
+    await request(app).post("/other");
+    const blocked = await request(app).post("/other");
+    expect(blocked.status).toBe(429);
+  });
+
+  it("does not skip paths that only share a prefix with skipPaths entries", async () => {
+    const app = express();
+    app.set("trust proxy", true);
+    app.use(rateLimiter({ max: 1, windowMs: 1000, skipPaths: ["/api/v1/quote"] }));
+    app.post("/api/v1/quote-history", (_req, res) => res.status(201).json({ ok: true }));
+    app.use(errorHandler);
+
+    await request(app).post("/api/v1/quote-history");
+    const blocked = await request(app).post("/api/v1/quote-history");
+    expect(blocked.status).toBe(429);
+  });
 });
