@@ -131,4 +131,10 @@ export class LiquidityService {
   listEntries(): LiquidityEntry[] {
     return this.repo.all();
   }
+
+  /** Returns all raw liquidity entries for a given anchor. */
+  listByAnchor(anchorInput: unknown): LiquidityEntry[] {
+    const anchor = requireString(anchorInput, "anchor");
+    return this.repo.byAnchor(anchor);
+  }
 }

@@ -16,6 +16,54 @@ export interface AuditEntry {
   status: number;
   requestId?: string;
   timestamp: string;
+  headers?: Record<string, string | string[] | undefined>;
+  body?: Record<string, any>;
+}
+
+export const SENSITIVE_FIELD_DENYLIST: ReadonlySet<string> = new Set([
+  "x-api-key",
+  "api-key",
+  "apikey",
+  "authorization",
+  "cookie",
+  "set-cookie",
+  "token",
+  "access_token",
+  "refresh_token",
+  "secret",
+  "password",
+  "bearer",
+  "private_key",
+  "privatekey",
+  "client_secret",
+]);
+
+export function isSensitiveField(key: string): boolean {
+  return SENSITIVE_FIELD_DENYLIST.has(key.toLowerCase().trim());
+}
+
+export function redactSensitiveData<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return data;
+  }
+  if (typeof data !== "object") {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map((item) => redactSensitiveData(item)) as unknown as T;
+  }
+
+  const redactedObj: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (isSensitiveField(key)) {
+      redactedObj[key] = "[REDACTED]";
+    } else if (typeof value === "object" && value !== null) {
+      redactedObj[key] = redactSensitiveData(value);
+    } else {
+      redactedObj[key] = value;
+    }
+  }
+  return redactedObj as T;
 }
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -44,13 +92,15 @@ export function createAuditLog(
       const path = req.originalUrl.split("?")[0];
 
       res.on("finish", () => {
-        history.push({
+        const entry: AuditEntry = {
           method,
           path,
           status: res.statusCode,
           requestId: res.getHeader("x-request-id") as string | undefined,
           timestamp: new Date().toISOString(),
-        });
+        };
+
+        history.push(redactSensitiveData(entry));
       });
 
       next();
@@ -58,3 +108,4 @@ export function createAuditLog(
     entries: () => history.all(),
   };
 }
+

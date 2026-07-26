@@ -19,6 +19,8 @@ export interface Pool {
   asset: string;
   total: number;
   anchors: number;
+  /** ISO-8601 timestamp of the most recently updated contributing entry. */
+  lastUpdated?: string;
 }
 
 /** A request to route `amount` of `asset` through available liquidity. */

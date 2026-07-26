@@ -67,6 +67,37 @@ describe("loadConfig", () => {
     expect(loadConfig({ CORS_ORIGIN: "  ,  " }).corsOrigins).toBeUndefined();
   });
 
+  it.each([
+    "http://localhost:3000",
+    "https://api.example.com",
+    "https://api.example.com:8443",
+    "https://[2001:db8::1]:8443",
+  ])("accepts the valid CORS origin %p", (origin) => {
+    expect(loadConfig({ CORS_ORIGIN: origin }).corsOrigins).toEqual([origin]);
+  });
+
+  it.each([
+    "example.com",
+    "*",
+    "ftp://example.com",
+    "https://user:password@example.com",
+    "https://example.com/path",
+    "https://example.com?query=value",
+    "https://example.com#fragment",
+  ])("rejects the invalid CORS origin %p", (origin) => {
+    expect(() => loadConfig({ CORS_ORIGIN: origin })).toThrow(
+      `CORS_ORIGIN contains an invalid origin: ${JSON.stringify(origin)}`,
+    );
+  });
+
+  it("rejects the full allowlist when one CORS origin is malformed", () => {
+    expect(() =>
+      loadConfig({
+        CORS_ORIGIN: "https://valid.example, example.com",
+      }),
+    ).toThrow(/example\.com/);
+  });
+
   it("defaults the JSON body size limit to 100kb", () => {
     expect(loadConfig({}).bodyLimit).toBe("100kb");
   });
@@ -117,5 +148,37 @@ describe("loadConfig", () => {
     expect(config.idempotencyTtlMs).toBe(3600000);
     expect(config.rateLimitMax).toBe(100);
     expect(config.rateLimitWindowMs).toBe(120000);
+  });
+
+  describe("TRUST_PROXY", () => {
+    it('parses "true" to boolean true', () => {
+      expect(loadConfig({ TRUST_PROXY: "true" }).trustProxy).toBe(true);
+    });
+
+    it('parses "false" to boolean false', () => {
+      expect(loadConfig({ TRUST_PROXY: "false" }).trustProxy).toBe(false);
+    });
+
+    it('parses "1" to boolean true', () => {
+      expect(loadConfig({ TRUST_PROXY: "1" }).trustProxy).toBe(true);
+    });
+
+    it('parses "0" to boolean false', () => {
+      expect(loadConfig({ TRUST_PROXY: "0" }).trustProxy).toBe(false);
+    });
+
+    it("parses a numeric string to a number", () => {
+      expect(loadConfig({ TRUST_PROXY: "2" }).trustProxy).toBe(2);
+    });
+
+    it("passes a non-numeric string through", () => {
+      expect(loadConfig({ TRUST_PROXY: "loopback" }).trustProxy).toBe(
+        "loopback",
+      );
+    });
+
+    it("defaults to false when unset", () => {
+      expect(loadConfig({}).trustProxy).toBe(false);
+    });
   });
 });

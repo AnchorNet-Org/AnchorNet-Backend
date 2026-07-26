@@ -24,8 +24,10 @@ describe("LiquidityService", () => {
     service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
     service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 50 });
 
-    expect(service.getPool("USDC").total).toBe(150);
-    expect(service.getPool("USDC").anchors).toBe(1);
+    const pool = service.getPool("USDC");
+    expect(pool.total).toBe(150);
+    expect(pool.anchors).toBe(1);
+    expect(pool.lastUpdated).toBeDefined();
   });
 
   it("rejects non-positive amounts", () => {
@@ -127,5 +129,20 @@ describe("LiquidityService", () => {
     expect(() => service.removeEntry("anchorA", "USDC")).toThrow(
       expect.objectContaining({ status: 404, code: "NOT_FOUND" }),
     );
+  });
+
+  it("lists entries by anchor", () => {
+    const service = makeService();
+    service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
+    service.addLiquidity({ anchor: "anchorB", asset: "USDC", amount: 50 });
+    service.addLiquidity({ anchor: "anchorA", asset: "EURC", amount: 75 });
+
+    const entriesA = service.listByAnchor("anchorA");
+    expect(entriesA).toHaveLength(2);
+    expect(entriesA.map(e => e.asset).sort()).toEqual(["EURC", "USDC"]);
+
+    const entriesB = service.listByAnchor("anchorB");
+    expect(entriesB).toHaveLength(1);
+    expect(entriesB[0].asset).toBe("USDC");
   });
 });

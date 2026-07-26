@@ -35,6 +35,11 @@ export function liquidityRouter(service: LiquidityService): Router {
     res.json(service.removeEntry(req.params.anchor, req.params.asset));
   });
 
+  // Read the raw liquidity entries for a single anchor.
+  router.get("/anchors/:anchor", (req: Request, res: Response) => {
+    res.json({ entries: service.listByAnchor(req.params.anchor) });
+  });
+
   // Read the aggregated pool for a single asset.
   router.get("/:asset", (req: Request, res: Response) => {
     res.json(service.getPool(req.params.asset));

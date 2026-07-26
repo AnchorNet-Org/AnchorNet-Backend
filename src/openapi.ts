@@ -44,7 +44,10 @@ export function buildOpenApiSpec(): Record<string, unknown> {
           summary:
             "Record (or accumulate) liquidity for an anchor/asset pair",
         },
-        get: { summary: "List aggregated liquidity pools" },
+        get: { 
+          summary: "List aggregated liquidity pools",
+          description: "Returns an array of Pool objects, each containing asset, total, anchors count, and a lastUpdated timestamp.",
+        },
       },
       "/api/v1/liquidity/withdraw": {
         post: { summary: "Withdraw previously recorded liquidity" },
@@ -52,8 +55,14 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       "/api/v1/liquidity/entries": {
         get: { summary: "List raw per-anchor liquidity entries" },
       },
+      "/api/v1/liquidity/anchors/{anchor}": {
+        get: { summary: "List raw liquidity entries for a single anchor" },
+      },
       "/api/v1/liquidity/{asset}": {
-        get: { summary: "Read the aggregated pool for one asset" },
+        get: { 
+          summary: "Read the aggregated pool for one asset",
+          description: "Returns a single Pool object containing asset, total, anchors count, and a lastUpdated timestamp.",
+        },
       },
       "/api/v1/liquidity/{anchor}/{asset}": {
         delete: {
@@ -80,7 +89,14 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       },
       "/api/v1/anchors/{id}": {
         get: { summary: "Read one anchor" },
-        patch: { summary: "Partially update an anchor's name" },
+        patch: {
+          summary: "Partially update an anchor's name",
+          description:
+            "Strict body: `name` is the only accepted field. Any other key " +
+            "(e.g. `active`, `id`, or a typo like `enabled`) is rejected with " +
+            "a 400 naming the offending field, rather than being silently " +
+            "ignored. A missing or blank `name` is also a 400.",
+        },
         delete: { summary: "Deactivate an anchor" },
       },
       "/api/v1/anchors/{id}/reactivate": {

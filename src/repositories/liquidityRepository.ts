@@ -34,6 +34,11 @@ export class LiquidityRepository extends InMemoryRepository<string, LiquidityEnt
     return this.listAll().filter((e) => e.asset === asset);
   }
 
+  /** Returns all entries for a given anchor. */
+  byAnchor(anchor: string): LiquidityEntry[] {
+    return this.listAll().filter((e) => e.anchor === anchor);
+  }
+
   /** Returns every stored entry. */
   all(): LiquidityEntry[] {
     return this.listAll();
@@ -50,6 +55,9 @@ export class LiquidityRepository extends InMemoryRepository<string, LiquidityEnt
       };
       pool.total += entry.amount;
       pool.anchors += 1;
+      if (!pool.lastUpdated || entry.updatedAt > pool.lastUpdated) {
+        pool.lastUpdated = entry.updatedAt;
+      }
       totals.set(entry.asset, pool);
     }
     return [...totals.values()];

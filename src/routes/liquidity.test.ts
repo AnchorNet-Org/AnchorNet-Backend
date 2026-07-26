@@ -25,7 +25,7 @@ describe("liquidity routes", () => {
     const res = await request(app).get("/api/v1/liquidity");
     expect(res.status).toBe(200);
     expect(res.body.pools).toEqual([
-      { asset: "USDC", total: 800, anchors: 2 },
+      { asset: "USDC", total: 800, anchors: 2, lastUpdated: expect.any(String) },
     ]);
   });
 
@@ -170,5 +170,38 @@ describe("liquidity routes", () => {
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe("BAD_REQUEST");
     }
+  });
+
+  it("lists entries by anchor via GET /anchors/:anchor", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorB", asset: "USDC", amount: 300 });
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "EURC", amount: 150 });
+
+    const res = await request(app).get("/api/v1/liquidity/anchors/anchorA");
+    
+    expect(res.status).toBe(200);
+    expect(res.body.entries).toHaveLength(2);
+    
+    const assets = res.body.entries.map((e: any) => e.asset).sort();
+    expect(assets).toEqual(["EURC", "USDC"]);
+  });
+
+  it("does not shadow /:asset with /anchors/:anchor", async () => {
+    const app = createApp();
+    // Insert an asset named "anchors" just to be sure it can still be fetched
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "ANCHORS", amount: 500 });
+
+    const res = await request(app).get("/api/v1/liquidity/ANCHORS");
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(500);
   });
 });
