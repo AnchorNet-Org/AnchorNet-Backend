@@ -24,8 +24,10 @@ describe("LiquidityService", () => {
     service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
     service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 50 });
 
-    expect(service.getPool("USDC").total).toBe(150);
-    expect(service.getPool("USDC").anchors).toBe(1);
+    const pool = service.getPool("USDC");
+    expect(pool.total).toBe(150);
+    expect(pool.anchors).toBe(1);
+    expect(pool.lastUpdated).toBeDefined();
   });
 
   it("rejects non-positive amounts", () => {

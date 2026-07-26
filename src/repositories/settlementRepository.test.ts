@@ -48,4 +48,28 @@ describe("SettlementRepository", () => {
     expect(repo.byAnchor("anchorA")).toHaveLength(2);
     expect(repo.count()).toBe(3);
   });
+
+  describe("remove", () => {
+    it("removes an existing settlement and returns true", () => {
+      const repo = new SettlementRepository();
+      const s = repo.create(draft("anchorA", 100));
+      expect(repo.count()).toBe(1);
+
+      const result = repo.remove(s.id);
+      expect(result).toBe(true);
+      expect(repo.get(s.id)).toBeUndefined();
+      expect(repo.count()).toBe(0);
+      expect(repo.all()).toHaveLength(0);
+      expect(repo.byAnchor("anchorA")).toHaveLength(0);
+    });
+
+    it("returns false when removing a non-existent id", () => {
+      const repo = new SettlementRepository();
+      repo.create(draft("anchorA", 100));
+
+      const result = repo.remove(999);
+      expect(result).toBe(false);
+      expect(repo.count()).toBe(1);
+    });
+  });
 });
