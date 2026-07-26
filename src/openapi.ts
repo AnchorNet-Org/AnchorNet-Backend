@@ -80,7 +80,14 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       },
       "/api/v1/anchors/{id}": {
         get: { summary: "Read one anchor" },
-        patch: { summary: "Partially update an anchor's name" },
+        patch: {
+          summary: "Partially update an anchor's name",
+          description:
+            "Strict body: `name` is the only accepted field. Any other key " +
+            "(e.g. `active`, `id`, or a typo like `enabled`) is rejected with " +
+            "a 400 naming the offending field, rather than being silently " +
+            "ignored. A missing or blank `name` is also a 400.",
+        },
         delete: { summary: "Deactivate an anchor" },
       },
       "/api/v1/anchors/{id}/reactivate": {
