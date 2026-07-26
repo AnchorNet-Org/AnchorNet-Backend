@@ -55,6 +55,9 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       "/api/v1/liquidity/entries": {
         get: { summary: "List raw per-anchor liquidity entries" },
       },
+      "/api/v1/liquidity/anchors/{anchor}": {
+        get: { summary: "List raw liquidity entries for a single anchor" },
+      },
       "/api/v1/liquidity/{asset}": {
         get: { 
           summary: "Read the aggregated pool for one asset",
