@@ -137,6 +137,24 @@ describe("anchor routes", () => {
     expect(res.body.error.code).toBe("BAD_REQUEST");
   });
 
+  it("returns 400 patching with an unknown field, naming it (#160)", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+
+    const res = await request(app)
+      .patch("/api/v1/anchors/anchorA")
+      .send({ name: "New Name", active: false });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+    expect(res.body.error.message).toMatch(/"active"/);
+
+    // The silently-dropped update must not have taken effect.
+    const one = await request(app).get("/api/v1/anchors/anchorA");
+    expect(one.body.name).toBe("anchorA");
+    expect(one.body.active).toBe(true);
+  });
+
   it("returns 404 for an unknown anchor", async () => {
     const app = createApp();
     const res = await request(app).get("/api/v1/anchors/missing");

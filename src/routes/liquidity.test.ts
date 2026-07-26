@@ -25,7 +25,7 @@ describe("liquidity routes", () => {
     const res = await request(app).get("/api/v1/liquidity");
     expect(res.status).toBe(200);
     expect(res.body.pools).toEqual([
-      { asset: "USDC", total: 800, anchors: 2 },
+      { asset: "USDC", total: 800, anchors: 2, lastUpdated: expect.any(String) },
     ]);
   });
 

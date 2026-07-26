@@ -55,6 +55,9 @@ export class LiquidityRepository extends InMemoryRepository<string, LiquidityEnt
       };
       pool.total += entry.amount;
       pool.anchors += 1;
+      if (!pool.lastUpdated || entry.updatedAt > pool.lastUpdated) {
+        pool.lastUpdated = entry.updatedAt;
+      }
       totals.set(entry.asset, pool);
     }
     return [...totals.values()];

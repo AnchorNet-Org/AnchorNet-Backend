@@ -93,10 +93,27 @@ export class AnchorService {
   /**
    * Partially updates an anchor's mutable display name. `id`, `registeredAt`
    * and `active` are managed elsewhere (registration and (re)activation) and
-   * cannot be changed here. Throws 404 if unknown, or 400 if `name` is
-   * missing or blank.
+   * cannot be changed here.
+   *
+   * The update body is strict: `name` is the only accepted field. Any other
+   * key is rejected with a 400 naming the offending field(s) instead of being
+   * silently dropped — including a typo of a real field (`enabled` for
+   * `active`, `Name` for `name`). This closes the confused-deputy gap in
+   * issue #160, where a caller sending `{ name, active: false }` got a 200 and
+   * had no way to tell "the field was applied" from "the field was ignored".
+   *
+   * Throws 404 if the anchor is unknown, or 400 if an unexpected field is
+   * present or if `name` is missing or blank.
    */
   update(idInput: unknown, input: { name?: unknown }): Anchor {
+    const unexpected = Object.keys(input).filter((key) => key !== "name");
+    if (unexpected.length > 0) {
+      const fields = unexpected.map((field) => `"${field}"`).join(", ");
+      throw ApiError.badRequest(
+        `unexpected field(s) in anchor update: ${fields}`,
+      );
+    }
+
     const anchor = this.get(idInput);
     if (input.name === undefined) {
       throw ApiError.badRequest('"name" must be provided to update an anchor');

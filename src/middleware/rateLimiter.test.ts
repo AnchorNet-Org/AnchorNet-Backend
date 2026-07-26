@@ -102,6 +102,42 @@ describe("rateLimiter", () => {
     expect(second.status).toBe(429);
   });
 
+  it("buckets by real client IP when trust proxy is enabled", async () => {
+    const app = express();
+    app.set("trust proxy", true);
+    app.use(rateLimiter({ max: 1, windowMs: 1000 }));
+    app.post("/mutate", (_req, res) => res.status(201).json({ ok: true }));
+    app.use(errorHandler);
+
+    const first = await request(app)
+      .post("/mutate")
+      .set("x-forwarded-for", "10.0.0.1");
+    const second = await request(app)
+      .post("/mutate")
+      .set("x-forwarded-for", "10.0.0.2");
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+  });
+
+  it("collapses to one bucket when trust proxy is disabled", async () => {
+    const app = express();
+    app.set("trust proxy", false);
+    app.use(rateLimiter({ max: 1, windowMs: 1000 }));
+    app.post("/mutate", (_req, res) => res.status(201).json({ ok: true }));
+    app.use(errorHandler);
+
+    const first = await request(app)
+      .post("/mutate")
+      .set("x-forwarded-for", "10.0.0.1");
+    const second = await request(app)
+      .post("/mutate")
+      .set("x-forwarded-for", "10.0.0.2");
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(429);
+  });
+
   it("uses a fallback bucket when no client IP is available", () => {
     const limiter = rateLimiter();
     const req = { method: "POST", ip: undefined } as unknown as Request;
@@ -114,5 +150,36 @@ describe("rateLimiter", () => {
     expect(next).toHaveBeenLastCalledWith(
       expect.objectContaining({ status: 429, code: "RATE_LIMITED" }),
     );
+  });
+
+  it("skips rate limiting for paths in skipPaths", async () => {
+    const app = express();
+    app.set("trust proxy", true);
+    app.use(rateLimiter({ max: 2, windowMs: 1000, skipPaths: ["/skip-me"] }));
+    app.post("/skip-me", (_req, res) => res.status(201).json({ ok: true }));
+    app.post("/other", (_req, res) => res.status(201).json({ ok: true }));
+    app.use(errorHandler);
+
+    for (let i = 0; i < 5; i++) {
+      const res = await request(app).post("/skip-me");
+      expect(res.status).toBe(201);
+    }
+
+    await request(app).post("/other");
+    await request(app).post("/other");
+    const blocked = await request(app).post("/other");
+    expect(blocked.status).toBe(429);
+  });
+
+  it("does not skip paths that only share a prefix with skipPaths entries", async () => {
+    const app = express();
+    app.set("trust proxy", true);
+    app.use(rateLimiter({ max: 1, windowMs: 1000, skipPaths: ["/api/v1/quote"] }));
+    app.post("/api/v1/quote-history", (_req, res) => res.status(201).json({ ok: true }));
+    app.use(errorHandler);
+
+    await request(app).post("/api/v1/quote-history");
+    const blocked = await request(app).post("/api/v1/quote-history");
+    expect(blocked.status).toBe(429);
   });
 });

@@ -2,6 +2,8 @@
  * Typed application configuration loaded from environment variables.
  */
 
+import { URL } from "node:url";
+
 export interface Config {
   /** Port the HTTP server binds to. */
   port: number;
@@ -28,6 +30,12 @@ export interface Config {
   rateLimitMax: number;
   /** Length of the rolling window, in milliseconds. */
   rateLimitWindowMs: number;
+  /**
+   * Express `trust proxy` setting. When enabled behind a load balancer,
+   * Express trusts the `X-Forwarded-For` header so `req.ip` reflects the
+   * real client address rather than the proxy's IP.
+   */
+  trustProxy: boolean | string | number;
 }
 
 const DEFAULT_BODY_LIMIT = "100kb";
@@ -40,7 +48,9 @@ function intFromEnv(value: string | undefined, fallback: number): number {
 
 /**
  * Parses a comma-separated `CORS_ORIGIN` value into a list of allowed
- * origins, trimming whitespace and dropping empty entries. Returns
+ * origins, trimming whitespace and dropping empty entries. Only HTTP(S)
+ * origins are accepted; paths, credentials, queries, and fragments are
+ * rejected so configuration mistakes fail visibly at startup. Returns
  * `undefined` when unset or when every entry is blank.
  */
 function parseCorsOrigins(value: string | undefined): string[] | undefined {
@@ -49,6 +59,33 @@ function parseCorsOrigins(value: string | undefined): string[] | undefined {
     .split(",")
     .map((origin) => origin.trim())
     .filter((origin) => origin !== "");
+
+  for (const origin of origins) {
+    let parsed: URL;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      throw new Error(
+        `CORS_ORIGIN contains an invalid origin: ${JSON.stringify(origin)}`,
+      );
+    }
+
+    const isHttpOrigin =
+      parsed.protocol === "http:" || parsed.protocol === "https:";
+    const hasOriginOnly =
+      parsed.username === "" &&
+      parsed.password === "" &&
+      parsed.pathname === "/" &&
+      parsed.search === "" &&
+      parsed.hash === "";
+
+    if (!isHttpOrigin || !hasOriginOnly) {
+      throw new Error(
+        `CORS_ORIGIN contains an invalid origin: ${JSON.stringify(origin)}`,
+      );
+    }
+  }
+
   return origins.length > 0 ? origins : undefined;
 }
 
@@ -59,6 +96,24 @@ const MAX_FEE_BPS = 10_000;
 function parseBooleanFlag(value: string | undefined): boolean {
   if (value === undefined) return false;
   return value.trim().toLowerCase() === "1" || value.trim().toLowerCase() === "true";
+}
+
+/**
+ * Parses `TRUST_PROXY` into an Express-compatible value.
+ *
+ * - `"true"` / `"1"` → `true`
+ * - `"false"` / `"0"` / unset → `false`
+ * - numeric string → `number`
+ * - anything else → passed through as a `string` (e.g. `"loopback"`)
+ */
+function parseTrustProxy(value: string | undefined): boolean | string | number {
+  if (value === undefined) return false;
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed === "true" || trimmed === "1") return true;
+  if (trimmed === "false" || trimmed === "0") return false;
+  const num = Number(trimmed);
+  if (Number.isFinite(num) && trimmed !== "") return num;
+  return trimmed;
 }
 
 /** Builds the {@link Config} from `process.env`, applying sensible defaults. */
@@ -88,5 +143,6 @@ export function loadConfig(
     idempotencyTtlMs: intFromEnv(env.IDEMPOTENCY_TTL_MS, 86_400_000),
     rateLimitMax: intFromEnv(env.RATE_LIMIT_MAX, 30),
     rateLimitWindowMs: intFromEnv(env.RATE_LIMIT_WINDOW_MS, 60_000),
+    trustProxy: parseTrustProxy(env.TRUST_PROXY),
   };
 }

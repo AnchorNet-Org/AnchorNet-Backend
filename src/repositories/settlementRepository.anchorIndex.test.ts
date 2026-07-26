@@ -20,9 +20,9 @@ describe("SettlementRepository Anchor Index", () => {
 
   it("returns settlements for an anchor sorted most recent first", () => {
     const repo = new SettlementRepository();
-    const s1 = repo.create(draft("anchorA", 100)); // id 1
-    const s2 = repo.create(draft("anchorA", 200)); // id 2
-    const s3 = repo.create(draft("anchorB", 300)); // id 3
+    repo.create(draft("anchorA", 100)); // id 1
+    repo.create(draft("anchorA", 200)); // id 2
+    repo.create(draft("anchorB", 300)); // id 3
     const result = repo.byAnchor("anchorA");
     expect(result.map((s) => s.id)).toEqual([2, 1]);
     expect(result).toHaveLength(2);
