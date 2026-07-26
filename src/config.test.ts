@@ -114,4 +114,36 @@ describe("loadConfig", () => {
     expect(config.rateLimitMax).toBe(100);
     expect(config.rateLimitWindowMs).toBe(120000);
   });
+
+  describe("TRUST_PROXY", () => {
+    it('parses "true" to boolean true', () => {
+      expect(loadConfig({ TRUST_PROXY: "true" }).trustProxy).toBe(true);
+    });
+
+    it('parses "false" to boolean false', () => {
+      expect(loadConfig({ TRUST_PROXY: "false" }).trustProxy).toBe(false);
+    });
+
+    it('parses "1" to boolean true', () => {
+      expect(loadConfig({ TRUST_PROXY: "1" }).trustProxy).toBe(true);
+    });
+
+    it('parses "0" to boolean false', () => {
+      expect(loadConfig({ TRUST_PROXY: "0" }).trustProxy).toBe(false);
+    });
+
+    it("parses a numeric string to a number", () => {
+      expect(loadConfig({ TRUST_PROXY: "2" }).trustProxy).toBe(2);
+    });
+
+    it("passes a non-numeric string through", () => {
+      expect(loadConfig({ TRUST_PROXY: "loopback" }).trustProxy).toBe(
+        "loopback",
+      );
+    });
+
+    it("defaults to false when unset", () => {
+      expect(loadConfig({}).trustProxy).toBe(false);
+    });
+  });
 });

@@ -102,6 +102,42 @@ describe("rateLimiter", () => {
     expect(second.status).toBe(429);
   });
 
+  it("buckets by real client IP when trust proxy is enabled", async () => {
+    const app = express();
+    app.set("trust proxy", true);
+    app.use(rateLimiter({ max: 1, windowMs: 1000 }));
+    app.post("/mutate", (_req, res) => res.status(201).json({ ok: true }));
+    app.use(errorHandler);
+
+    const first = await request(app)
+      .post("/mutate")
+      .set("x-forwarded-for", "10.0.0.1");
+    const second = await request(app)
+      .post("/mutate")
+      .set("x-forwarded-for", "10.0.0.2");
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+  });
+
+  it("collapses to one bucket when trust proxy is disabled", async () => {
+    const app = express();
+    app.set("trust proxy", false);
+    app.use(rateLimiter({ max: 1, windowMs: 1000 }));
+    app.post("/mutate", (_req, res) => res.status(201).json({ ok: true }));
+    app.use(errorHandler);
+
+    const first = await request(app)
+      .post("/mutate")
+      .set("x-forwarded-for", "10.0.0.1");
+    const second = await request(app)
+      .post("/mutate")
+      .set("x-forwarded-for", "10.0.0.2");
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(429);
+  });
+
   it("uses a fallback bucket when no client IP is available", () => {
     const limiter = rateLimiter();
     const req = { method: "POST", ip: undefined } as unknown as Request;

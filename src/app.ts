@@ -38,6 +38,8 @@ export function createApp(): Express {
   const app = express();
   const config = loadConfig();
 
+  app.set("trust proxy", config.trustProxy);
+
   app.use(cors(config.corsOrigins ? { origin: config.corsOrigins } : undefined));
   app.use(compression());
   app.use(securityHeaders);

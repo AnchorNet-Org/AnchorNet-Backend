@@ -28,6 +28,12 @@ export interface Config {
   rateLimitMax: number;
   /** Length of the rolling window, in milliseconds. */
   rateLimitWindowMs: number;
+  /**
+   * Express `trust proxy` setting. When enabled behind a load balancer,
+   * Express trusts the `X-Forwarded-For` header so `req.ip` reflects the
+   * real client address rather than the proxy's IP.
+   */
+  trustProxy: boolean | string | number;
 }
 
 const DEFAULT_BODY_LIMIT = "100kb";
@@ -61,6 +67,24 @@ function parseBooleanFlag(value: string | undefined): boolean {
   return value.trim().toLowerCase() === "1" || value.trim().toLowerCase() === "true";
 }
 
+/**
+ * Parses `TRUST_PROXY` into an Express-compatible value.
+ *
+ * - `"true"` / `"1"` → `true`
+ * - `"false"` / `"0"` / unset → `false`
+ * - numeric string → `number`
+ * - anything else → passed through as a `string` (e.g. `"loopback"`)
+ */
+function parseTrustProxy(value: string | undefined): boolean | string | number {
+  if (value === undefined) return false;
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed === "true" || trimmed === "1") return true;
+  if (trimmed === "false" || trimmed === "0") return false;
+  const num = Number(trimmed);
+  if (Number.isFinite(num) && trimmed !== "") return num;
+  return trimmed;
+}
+
 /** Builds the {@link Config} from `process.env`, applying sensible defaults. */
 export function loadConfig(
   env: Record<string, string | undefined> = process.env,
@@ -88,5 +112,6 @@ export function loadConfig(
     idempotencyTtlMs: intFromEnv(env.IDEMPOTENCY_TTL_MS, 86_400_000),
     rateLimitMax: intFromEnv(env.RATE_LIMIT_MAX, 30),
     rateLimitWindowMs: intFromEnv(env.RATE_LIMIT_WINDOW_MS, 60_000),
+    trustProxy: parseTrustProxy(env.TRUST_PROXY),
   };
 }
