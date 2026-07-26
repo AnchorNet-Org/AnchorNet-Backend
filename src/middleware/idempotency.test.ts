@@ -109,4 +109,93 @@ describe("idempotency", () => {
     expect(first.body.counter).toBe(1);
     expect(second.body.counter).toBe(2);
   });
+
+  it("replays cached response when same key and same body", async () => {
+    const app = makeApp();
+
+    const first = await request(app)
+      .post("/mutate")
+      .set("Idempotency-Key", "match-key")
+      .send({ value: "hello" });
+    const second = await request(app)
+      .post("/mutate")
+      .set("Idempotency-Key", "match-key")
+      .send({ value: "hello" });
+
+    expect(first.status).toBe(201);
+    expect(first.body.counter).toBe(1);
+    expect(second.status).toBe(201);
+    expect(second.body.counter).toBe(1);
+  });
+
+  it("returns 422 IDEMPOTENCY_KEY_REUSE when same key and different body", async () => {
+    const app = makeApp();
+
+    const first = await request(app)
+      .post("/mutate")
+      .set("Idempotency-Key", "mismatch-key")
+      .send({ value: "hello" });
+    const second = await request(app)
+      .post("/mutate")
+      .set("Idempotency-Key", "mismatch-key")
+      .send({ value: "world" });
+
+    expect(first.status).toBe(201);
+    expect(first.body.counter).toBe(1);
+    expect(second.status).toBe(422);
+    expect(second.body.error.code).toBe("IDEMPOTENCY_KEY_REUSE");
+  });
+
+  it("replays cached response when same body with different key ordering", async () => {
+    const app = makeApp();
+
+    const first = await request(app)
+      .post("/mutate")
+      .set("Idempotency-Key", "order-key")
+      .send({ a: 1, b: 2 });
+    const second = await request(app)
+      .post("/mutate")
+      .set("Idempotency-Key", "order-key")
+      .send({ b: 2, a: 1 });
+
+    expect(first.status).toBe(201);
+    expect(first.body.counter).toBe(1);
+    expect(second.status).toBe(201);
+    expect(second.body.counter).toBe(1);
+  });
+
+  it("returns 422 when same key used with body then without body", async () => {
+    const app = makeApp();
+
+    const first = await request(app)
+      .post("/mutate")
+      .set("Idempotency-Key", "body-vs-empty")
+      .send({ value: "data" });
+    const second = await request(app)
+      .post("/mutate")
+      .set("Idempotency-Key", "body-vs-empty");
+
+    expect(first.status).toBe(201);
+    expect(first.body.counter).toBe(1);
+    expect(second.status).toBe(422);
+    expect(second.body.error.code).toBe("IDEMPOTENCY_KEY_REUSE");
+  });
+
+  it("replays cached response when body has numeric-like keys in different orders", async () => {
+    const app = makeApp();
+
+    const first = await request(app)
+      .post("/mutate")
+      .set("Idempotency-Key", "numeric-key")
+      .send({ "1": "a", "2": "b" });
+    const second = await request(app)
+      .post("/mutate")
+      .set("Idempotency-Key", "numeric-key")
+      .send({ "2": "b", "1": "a" });
+
+    expect(first.status).toBe(201);
+    expect(first.body.counter).toBe(1);
+    expect(second.status).toBe(201);
+    expect(second.body.counter).toBe(1);
+  });
 });
