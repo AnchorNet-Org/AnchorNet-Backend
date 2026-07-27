@@ -5,10 +5,36 @@
 import { Settlement, isSettlementStatus } from "../models/settlement";
 import { InMemoryRepository } from "./inMemoryRepository";
 
-export class SettlementRepository extends InMemoryRepository<number, Settlement> {
+export class SettlementRepository extends InMemoryRepository<
+  number,
+  Settlement
+> {
   /** Secondary index: anchor -> set of settlement ids */
   private readonly anchorIndex: Map<string, Set<number>> = new Map();
-  /** Returns the id that will be assigned to the next created settlement. */
+  /**
+   * Returns the id that will be assigned to the next `create()` call.
+   *
+   * ⚠️ SYNCHRONOUS-ONLY SAFETY GUARANTEE — DO NOT RESERVE ACROSS AN AWAIT.
+   *
+   * This method MUST NOT be used to predict or reserve an id across an
+   * awaited (asynchronous) boundary. Calling `peekNextId()` and then acting on
+   * the returned value is safe *only* because `create()` is itself fully
+   * synchronous: Node's single-threaded event loop serializes all synchronous
+   * code, so no other `create()` can run "in between". No locking is performed
+   * — the previewed id is a hint, not a reservation.
+   *
+   * If this repository is ever swapped for an async-backed store (e.g. a real
+   * database), this guarantee breaks: `peekNextId()` and `create()` would no
+   * longer execute atomically, and a concurrent caller could consume the
+   * previewed id before the caller reaches `create()`. In that future design,
+   * id allocation must be performed inside a single transactional/atomic
+   * operation rather than split across a `peek` + `create`.
+   *
+   * For the current in-memory, synchronous store, `peekNextId()` immediately
+   * followed by `create()` is guaranteed to yield the previewed id. See
+   * `src/repositories/settlementRepository.test.ts` for the locked-in test and
+   * `docs/ARCHITECTURE.md` for the persistence-swap risk note.
+   */
   peekNextId(): number {
     return this.peekId();
   }
@@ -49,7 +75,6 @@ export class SettlementRepository extends InMemoryRepository<number, Settlement>
       this.anchorIndex.set(settlement.anchor, newSet);
     }
     return this.upsertByKey(settlement.id, settlement);
-
   }
 
   /** Returns the settlement with `id`, or `undefined`. */
@@ -101,4 +126,3 @@ export class SettlementRepository extends InMemoryRepository<number, Settlement>
     return result;
   }
 }
-

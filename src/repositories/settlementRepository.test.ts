@@ -23,6 +23,47 @@ describe("SettlementRepository", () => {
     expect(repo.peekNextId()).toBe(3);
   });
 
+  describe("save anchor reindex", () => {
+    it("rebuilds the anchor index when save() changes the anchor", () => {
+      const repo = new SettlementRepository();
+      const created = repo.create(draft("anchorA", 100)); // id 1, indexed under anchorA
+
+      repo.save({ ...created, anchor: "anchorB" }); // anchor changes
+
+      expect(repo.get(created.id)?.anchor).toBe("anchorB");
+      expect(repo.byAnchor("anchorA")).toHaveLength(0);
+      expect(repo.byAnchor("anchorB")).toHaveLength(1);
+    });
+  });
+
+  describe("peekNextId", () => {
+    it("previews the id that the immediately following create() yields", () => {
+      const repo = new SettlementRepository();
+
+      const previewed = repo.peekNextId();
+      const created = repo.create(draft("anchorA", 100));
+
+      // Locks in the synchronous-only guarantee: peek -> create (no await in
+      // between) must return the exact id that was previewed. If this ever
+      // regresses (e.g. an async boundary is introduced between peek and
+      // create) the contract documented on SettlementRepository.peekNextId()
+      // would be violated.
+      expect(created.id).toBe(previewed);
+      // The counter has advanced exactly once after the create.
+      expect(repo.peekNextId()).toBe(previewed + 1);
+    });
+
+    it("yields a stable preview when no create() runs in between", () => {
+      const repo = new SettlementRepository();
+      repo.create(draft("anchorA", 100));
+
+      const first = repo.peekNextId();
+      const second = repo.peekNextId();
+      expect(first).toBe(second);
+      expect(first).toBe(2);
+    });
+  });
+
   it("saves status changes", () => {
     const repo = new SettlementRepository();
     const created = repo.create(draft("anchorA", 100));
