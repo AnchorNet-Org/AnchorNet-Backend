@@ -50,9 +50,7 @@ describe("anchor routes", () => {
     await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
     await request(app).delete("/api/v1/anchors/anchorA");
 
-    const res = await request(app).post(
-      "/api/v1/anchors/anchorA/reactivate",
-    );
+    const res = await request(app).post("/api/v1/anchors/anchorA/reactivate");
     expect(res.status).toBe(200);
     expect(res.body.active).toBe(true);
   });
@@ -68,9 +66,9 @@ describe("anchor routes", () => {
     expect(auditRes.status).toBe(200);
 
     const entries = auditRes.body.entries;
-    
+
     const deactivateEntry = entries.find(
-      (e: any) => e.method === "DELETE" && e.path === "/api/v1/anchors/anchorA"
+      (e: any) => e.method === "DELETE" && e.path === "/api/v1/anchors/anchorA",
     );
     expect(deactivateEntry).toBeDefined();
     expect(deactivateEntry).toMatchObject({
@@ -82,7 +80,8 @@ describe("anchor routes", () => {
     expect(deactivateEntry).toHaveProperty("timestamp");
 
     const reactivateEntry = entries.find(
-      (e: any) => e.method === "POST" && e.path === "/api/v1/anchors/anchorA/reactivate"
+      (e: any) =>
+        e.method === "POST" && e.path === "/api/v1/anchors/anchorA/reactivate",
     );
     expect(reactivateEntry).toBeDefined();
     expect(reactivateEntry).toMatchObject({
@@ -173,9 +172,7 @@ describe("anchor routes", () => {
       "anchorA",
     ]);
 
-    const inactive = await request(app).get(
-      "/api/v1/anchors?status=inactive",
-    );
+    const inactive = await request(app).get("/api/v1/anchors?status=inactive");
     expect(inactive.body.anchors.map((a: { id: string }) => a.id)).toEqual([
       "anchorB",
     ]);
@@ -194,9 +191,7 @@ describe("anchor routes", () => {
     await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
     await request(app).post("/api/v1/anchors").send({ id: "anchorB" });
 
-    const res = await request(app).get(
-      "/api/v1/anchors?sort=id&order=desc",
-    );
+    const res = await request(app).get("/api/v1/anchors?sort=id&order=desc");
     expect(res.status).toBe(200);
     expect(res.body.anchors.map((a: { id: string }) => a.id)).toEqual([
       "anchorB",
@@ -248,6 +243,16 @@ describe("anchor routes", () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
+
+  it("flags dryRun: false on a normal bulk registration", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/anchors/bulk")
+      .send({ anchors: [{ id: "anchorA" }] });
+
+    expect(res.status).toBe(201);
+    expect(res.body.dryRun).toBe(false);
   });
 
   it("searches the anchor list via ?q=", async () => {
@@ -306,7 +311,11 @@ describe("GET /api/v1/anchors/:id/settlements", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.settlements).toHaveLength(3);
-    expect(res.body.settlements.every((s: { anchor: string }) => s.anchor === "anchorA")).toBe(true);
+    expect(
+      res.body.settlements.every(
+        (s: { anchor: string }) => s.anchor === "anchorA",
+      ),
+    ).toBe(true);
   });
 
   it("returns 404 for an unknown anchor id", async () => {
@@ -357,8 +366,12 @@ describe("GET /api/v1/anchors/:id/settlements", () => {
     const app = createApp();
     await setupAnchorWithSettlements(app);
 
-    const nested = await request(app).get("/api/v1/anchors/anchorA/settlements");
-    const filtered = await request(app).get("/api/v1/settlements?anchor=anchorA");
+    const nested = await request(app).get(
+      "/api/v1/anchors/anchorA/settlements",
+    );
+    const filtered = await request(app).get(
+      "/api/v1/settlements?anchor=anchorA",
+    );
 
     expect(nested.status).toBe(200);
     expect(filtered.status).toBe(200);
@@ -375,7 +388,9 @@ describe("GET /api/v1/anchors/:id/settlements", () => {
     );
 
     expect(res.status).toBe(200);
-    const amounts = res.body.settlements.map((s: { amount: number }) => s.amount);
+    const amounts = res.body.settlements.map(
+      (s: { amount: number }) => s.amount,
+    );
     expect(amounts).toEqual([100, 200, 300]);
   });
 
@@ -388,7 +403,9 @@ describe("GET /api/v1/anchors/:id/settlements", () => {
     );
 
     expect(res.status).toBe(200);
-    const amounts = res.body.settlements.map((s: { amount: number }) => s.amount);
+    const amounts = res.body.settlements.map(
+      (s: { amount: number }) => s.amount,
+    );
     expect(amounts).toEqual([300, 200, 100]);
   });
 
@@ -456,7 +473,197 @@ describe("GET /api/v1/anchors/:id/settlements", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toMatch(/text\/csv/);
-    expect(res.text).toMatch(/^id,anchor,asset,amount,fee,status,createdAt,cancelReason\n/);
+    expect(res.text).toMatch(
+      /^id,anchor,asset,amount,fee,status,createdAt,cancelReason\n/,
+    );
     expect(res.text).toContain("anchorA");
+  });
+});
+
+describe("POST /api/v1/anchors/bulk?dryRun=true", () => {
+  it("validates the batch and registers nothing", async () => {
+    const app = createApp();
+
+    const res = await request(app)
+      .post("/api/v1/anchors/bulk?dryRun=true")
+      .send({ anchors: [{ id: "anchorA" }, { id: "anchorB", name: "B" }] });
+
+    expect(res.status).toBe(201);
+    expect(res.body.dryRun).toBe(true);
+    expect(res.body.anchors.map((a: { id: string }) => a.id)).toEqual([
+      "anchorA",
+      "anchorB",
+    ]);
+    expect(res.body.anchors[1].name).toBe("B");
+
+    const list = await request(app).get("/api/v1/anchors");
+    expect(list.body.anchors).toHaveLength(0);
+  });
+
+  it("leaves the repository unchanged, verified before and after", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "existing" });
+
+    const before = await request(app).get("/api/v1/anchors");
+
+    await request(app)
+      .post("/api/v1/anchors/bulk?dryRun=true")
+      .send({ anchors: [{ id: "anchorA" }, { id: "anchorB" }] });
+
+    const after = await request(app).get("/api/v1/anchors");
+    expect(after.body.anchors).toEqual(before.body.anchors);
+    expect(after.body.anchors).toHaveLength(1);
+  });
+
+  it("returns the same 409 as a real call for an id already registered", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+
+    const dry = await request(app)
+      .post("/api/v1/anchors/bulk?dryRun=true")
+      .send({ anchors: [{ id: "anchorB" }, { id: "anchorA" }] });
+    const real = await request(app)
+      .post("/api/v1/anchors/bulk")
+      .send({ anchors: [{ id: "anchorB" }, { id: "anchorA" }] });
+
+    expect(dry.status).toBe(409);
+    expect(dry.status).toBe(real.status);
+    expect(dry.body).toEqual(real.body);
+
+    const list = await request(app).get("/api/v1/anchors");
+    expect(list.body.anchors).toHaveLength(1);
+  });
+
+  it("returns the same 409 as a real call for a duplicate id within the batch", async () => {
+    const app = createApp();
+
+    const dry = await request(app)
+      .post("/api/v1/anchors/bulk?dryRun=true")
+      .send({ anchors: [{ id: "anchorA" }, { id: "anchorA" }] });
+    const real = await request(app)
+      .post("/api/v1/anchors/bulk")
+      .send({ anchors: [{ id: "anchorA" }, { id: "anchorA" }] });
+
+    expect(dry.status).toBe(409);
+    expect(dry.body).toEqual(real.body);
+
+    const list = await request(app).get("/api/v1/anchors");
+    expect(list.body.anchors).toHaveLength(0);
+  });
+
+  it("returns 400 for a missing/empty anchors array in dry-run mode", async () => {
+    const app = createApp();
+
+    const missing = await request(app)
+      .post("/api/v1/anchors/bulk?dryRun=true")
+      .send({});
+    const empty = await request(app)
+      .post("/api/v1/anchors/bulk?dryRun=true")
+      .send({ anchors: [] });
+
+    expect(missing.status).toBe(400);
+    expect(missing.body.error.code).toBe("BAD_REQUEST");
+    expect(empty.status).toBe(400);
+  });
+
+  it("returns 400 for a blank entry id in dry-run mode", async () => {
+    const app = createApp();
+
+    const res = await request(app)
+      .post("/api/v1/anchors/bulk?dryRun=true")
+      .send({ anchors: [{ id: "anchorA" }, { id: "  " }] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toContain("anchors[1].id");
+
+    const list = await request(app).get("/api/v1/anchors");
+    expect(list.body.anchors).toHaveLength(0);
+  });
+
+  it("performs a real registration for ?dryRun=false", async () => {
+    const app = createApp();
+
+    const res = await request(app)
+      .post("/api/v1/anchors/bulk?dryRun=false")
+      .send({ anchors: [{ id: "anchorA" }] });
+
+    expect(res.status).toBe(201);
+    expect(res.body.dryRun).toBe(false);
+
+    const list = await request(app).get("/api/v1/anchors");
+    expect(list.body.anchors).toHaveLength(1);
+  });
+
+  it("accepts mixed casing and surrounding whitespace for the flag", async () => {
+    const app = createApp();
+
+    const res = await request(app)
+      .post("/api/v1/anchors/bulk?dryRun=%20TRUE%20")
+      .send({ anchors: [{ id: "anchorA" }] });
+
+    expect(res.status).toBe(201);
+    expect(res.body.dryRun).toBe(true);
+
+    const list = await request(app).get("/api/v1/anchors");
+    expect(list.body.anchors).toHaveLength(0);
+  });
+
+  it("rejects an unrecognized dryRun value with 400 instead of registering", async () => {
+    const app = createApp();
+
+    for (const value of ["yes", "1", "ture"]) {
+      const res = await request(app)
+        .post(`/api/v1/anchors/bulk?dryRun=${value}`)
+        .send({ anchors: [{ id: "anchorA" }] });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("BAD_REQUEST");
+      expect(res.body.error.message).toContain("dryRun");
+    }
+
+    const list = await request(app).get("/api/v1/anchors");
+    expect(list.body.anchors).toHaveLength(0);
+  });
+
+  it("rejects a repeated dryRun query param with 400", async () => {
+    const app = createApp();
+
+    const res = await request(app)
+      .post("/api/v1/anchors/bulk?dryRun=true&dryRun=true")
+      .send({ anchors: [{ id: "anchorA" }] });
+
+    expect(res.status).toBe(400);
+
+    const list = await request(app).get("/api/v1/anchors");
+    expect(list.body.anchors).toHaveLength(0);
+  });
+
+  it("treats a bare ?dryRun (no value) as invalid rather than a real write", async () => {
+    const app = createApp();
+
+    const res = await request(app)
+      .post("/api/v1/anchors/bulk?dryRun")
+      .send({ anchors: [{ id: "anchorA" }] });
+
+    expect(res.status).toBe(400);
+
+    const list = await request(app).get("/api/v1/anchors");
+    expect(list.body.anchors).toHaveLength(0);
+  });
+
+  it("lets a dry run be followed by a real commit of the same batch", async () => {
+    const app = createApp();
+    const body = { anchors: [{ id: "anchorA" }, { id: "anchorB" }] };
+
+    const dry = await request(app)
+      .post("/api/v1/anchors/bulk?dryRun=true")
+      .send(body);
+    expect(dry.status).toBe(201);
+
+    const real = await request(app).post("/api/v1/anchors/bulk").send(body);
+    expect(real.status).toBe(201);
+
+    const list = await request(app).get("/api/v1/anchors");
+    expect(list.body.anchors).toHaveLength(2);
   });
 });

@@ -114,7 +114,18 @@ export function buildOpenApiSpec(): Record<string, unknown> {
         post: { summary: "Reactivate a previously deactivated anchor" },
       },
       "/api/v1/anchors/bulk": {
-        post: { summary: "Register a batch of anchors atomically" },
+        post: {
+          summary: "Register a batch of anchors atomically",
+          description:
+            "Validates every entry (against both the existing registry and " +
+            "duplicate ids within the batch) before storing any of them. " +
+            "Pass ?dryRun=true to run that identical validation as a " +
+            "read-only preflight check: the response reports the same " +
+            "success/error outcome and the would-be-registered anchors, but " +
+            'nothing is persisted. `dryRun` accepts only "true" or ' +
+            '"false"; any other value is a 400.',
+          parameters: ["dryRun"],
+        },
       },
       "/api/v1/anchors/{id}/settlements": {
         get: {

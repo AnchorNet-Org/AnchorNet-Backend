@@ -35,4 +35,17 @@ describe("openapi spec", () => {
       res.body.paths["/api/v1/liquidity/{anchor}/{asset}"].delete,
     ).toBeDefined();
   });
+
+  it("documents the dryRun preflight parameter on POST /api/v1/anchors/bulk", () => {
+    const spec = buildOpenApiSpec() as {
+      paths: Record<
+        string,
+        { post: { parameters?: string[]; description?: string } }
+      >;
+    };
+    const operation = spec.paths["/api/v1/anchors/bulk"].post;
+
+    expect(operation.parameters).toEqual(expect.arrayContaining(["dryRun"]));
+    expect(operation.description).toContain("dryRun=true");
+  });
 });

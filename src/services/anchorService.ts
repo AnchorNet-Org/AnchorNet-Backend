@@ -128,18 +128,25 @@ export class AnchorService {
   }
 
   /**
-   * Registers a batch of anchors atomically: every entry is validated (and
-   * checked against both the existing registry and duplicate ids within the
-   * same batch) before any of them are stored, so a single bad entry never
-   * leaves a partial batch registered.
+   * Validation phase of {@link registerBulk}: parses and checks every entry of
+   * the batch without touching the repository.
+   *
+   * Rejects a non-array/empty batch (400), entries whose `id`/`name` are not
+   * non-empty strings (400), ids duplicated within the batch (409), and ids
+   * that already exist in the registry (409). Returns the normalized
+   * `{ id, name }` pairs in batch order.
+   *
+   * Kept side-effect free on purpose so `dryRun` can reuse it verbatim: the
+   * preflight check and the real call run the exact same rules, and can never
+   * drift apart.
    */
-  registerBulk(input: unknown): Anchor[] {
+  private validateBulk(input: unknown): { id: string; name: string }[] {
     if (!Array.isArray(input) || input.length === 0) {
       throw ApiError.badRequest('"anchors" must be a non-empty array');
     }
 
     const seen = new Set<string>();
-    const parsed = input.map((entry, index) => {
+    return input.map((entry, index) => {
       const record = (entry ?? {}) as { id?: unknown; name?: unknown };
       const id = requireString(record.id, `anchors[${index}].id`);
       const name =
@@ -148,7 +155,9 @@ export class AnchorService {
           : requireString(record.name, `anchors[${index}].name`);
 
       if (seen.has(id)) {
-        throw ApiError.conflict(`anchor "${id}" appears more than once in the batch`);
+        throw ApiError.conflict(
+          `anchor "${id}" appears more than once in the batch`,
+        );
       }
       seen.add(id);
 
@@ -158,6 +167,34 @@ export class AnchorService {
 
       return { id, name };
     });
+  }
+
+  /**
+   * Registers a batch of anchors atomically: every entry is validated (and
+   * checked against both the existing registry and duplicate ids within the
+   * same batch) before any of them are stored, so a single bad entry never
+   * leaves a partial batch registered.
+   *
+   * When `dryRun` is `true` the batch is validated exactly as it would be for a
+   * real call — identical errors, identical error order — but the persist phase
+   * is skipped entirely: `repo.upsert` is never invoked and the registry is left
+   * untouched. The returned anchors are the records that *would* have been
+   * created, so an onboarding UI can preflight a batch and show inline errors
+   * before committing.
+   */
+  registerBulk(input: unknown, dryRun = false): Anchor[] {
+    const parsed = this.validateBulk(input);
+    const registeredAt = new Date().toISOString();
+
+    if (dryRun) {
+      // Preflight only: return the would-be-registered records, persist nothing.
+      return parsed.map(({ id, name }) => ({
+        id,
+        name,
+        registeredAt,
+        active: true,
+      }));
+    }
 
     return parsed.map(({ id, name }) =>
       this.repo.upsert({

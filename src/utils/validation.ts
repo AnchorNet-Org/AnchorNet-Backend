@@ -14,10 +14,16 @@ export function requireString(value: unknown, field: string): string {
 }
 
 /** Ensures `value` is a non-empty string up to a maximum length. */
-export function requireStringMaxLength(value: unknown, field: string, maxLength: number): string {
+export function requireStringMaxLength(
+  value: unknown,
+  field: string,
+  maxLength: number,
+): string {
   const str = requireString(value, field);
   if (str.length > maxLength) {
-    throw ApiError.badRequest(`"${field}" must be at most ${maxLength} characters`);
+    throw ApiError.badRequest(
+      `"${field}" must be at most ${maxLength} characters`,
+    );
   }
   return str;
 }
@@ -43,6 +49,29 @@ export function requirePositiveInteger(value: unknown, field: string): number {
     throw ApiError.badRequest(`"${field}" must be a positive integer`);
   }
   return parsed;
+}
+
+/**
+ * Parses an optional boolean flag, typically sourced from a query param where
+ * the value arrives as a string (`?dryRun=true`).
+ *
+ * Parsing is deliberately strict: an absent value defaults to `false`, and the
+ * only accepted values are `true`/`false` (as a real boolean, or as a string in
+ * any casing/with surrounding whitespace). Anything else — `"yes"`, `"1"`, a
+ * typo such as `"ture"`, or a repeated query param that Express turns into an
+ * array — is a 400 rather than being silently coerced. For a flag like
+ * `dryRun`, silently treating a typo as "not set" would perform a real,
+ * persisting write when the caller explicitly asked for a preflight check.
+ */
+export function optionalBooleanFlag(value: unknown, field: string): boolean {
+  if (value === undefined) return false;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+  throw ApiError.badRequest(`"${field}" must be "true" or "false"`);
 }
 
 /** Normalizes an asset code to upper case (e.g. "usdc" -> "USDC"). */
