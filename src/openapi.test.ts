@@ -15,9 +15,7 @@ describe("openapi spec", () => {
     expect(spec.paths).toHaveProperty("/api/v1/settlements");
     expect(spec.paths).toHaveProperty("/api/v1/liquidity");
     expect(spec.paths).toHaveProperty("/api/v1/liquidity/withdraw");
-    expect(spec.paths).toHaveProperty(
-      "/api/v1/liquidity/{anchor}/{asset}",
-    );
+    expect(spec.paths).toHaveProperty("/api/v1/liquidity/{anchor}/{asset}");
     expect(spec.paths).toHaveProperty("/api/v1/quote");
     expect(spec.paths).toHaveProperty("/api/v1/metrics");
     expect(spec.paths).toHaveProperty("/api/v1/metrics/history");
@@ -29,11 +27,24 @@ describe("openapi spec", () => {
     expect(res.status).toBe(200);
     expect(res.body.openapi).toBe("3.0.3");
     expect(res.body.paths["/api/v1/settlements"].get).toBeDefined();
-    expect(
-      res.body.paths["/api/v1/settlements"].get.parameters,
-    ).toEqual(expect.arrayContaining(["sort", "order", "asset", "anchor"]));
+    expect(res.body.paths["/api/v1/settlements"].get.parameters).toEqual(
+      expect.arrayContaining(["sort", "order", "asset", "anchor"]),
+    );
     expect(
       res.body.paths["/api/v1/liquidity/{anchor}/{asset}"].delete,
     ).toBeDefined();
+  });
+
+  it("documents the dryRun preflight parameter on POST /api/v1/anchors/bulk", () => {
+    const spec = buildOpenApiSpec() as {
+      paths: Record<
+        string,
+        { post: { parameters?: string[]; description?: string } }
+      >;
+    };
+    const operation = spec.paths["/api/v1/anchors/bulk"].post;
+
+    expect(operation.parameters).toEqual(expect.arrayContaining(["dryRun"]));
+    expect(operation.description).toContain("dryRun=true");
   });
 });

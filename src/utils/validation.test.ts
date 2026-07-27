@@ -1,5 +1,6 @@
 import {
   normalizeAsset,
+  optionalBooleanFlag,
   requirePositiveInteger,
   requirePositiveNumber,
   requireString,
@@ -42,8 +43,12 @@ describe("requirePositiveNumber", () => {
   });
 
   it("accepts MAX_SAFE_INTEGER and values beyond it", () => {
-    expect(requirePositiveNumber(Number.MAX_SAFE_INTEGER, "amount")).toBe(Number.MAX_SAFE_INTEGER);
-    expect(requirePositiveNumber(Number.MAX_SAFE_INTEGER + 1, "amount")).toBe(Number.MAX_SAFE_INTEGER + 1);
+    expect(requirePositiveNumber(Number.MAX_SAFE_INTEGER, "amount")).toBe(
+      Number.MAX_SAFE_INTEGER,
+    );
+    expect(requirePositiveNumber(Number.MAX_SAFE_INTEGER + 1, "amount")).toBe(
+      Number.MAX_SAFE_INTEGER + 1,
+    );
   });
 
   it("rejects zero", () => {
@@ -86,15 +91,27 @@ describe("requirePositiveInteger", () => {
   });
 
   it("accepts Number.MAX_SAFE_INTEGER", () => {
-    expect(requirePositiveInteger(Number.MAX_SAFE_INTEGER, "id")).toBe(Number.MAX_SAFE_INTEGER);
-    expect(requirePositiveInteger(String(Number.MAX_SAFE_INTEGER), "id")).toBe(Number.MAX_SAFE_INTEGER);
+    expect(requirePositiveInteger(Number.MAX_SAFE_INTEGER, "id")).toBe(
+      Number.MAX_SAFE_INTEGER,
+    );
+    expect(requirePositiveInteger(String(Number.MAX_SAFE_INTEGER), "id")).toBe(
+      Number.MAX_SAFE_INTEGER,
+    );
   });
 
   it("rejects values above Number.MAX_SAFE_INTEGER", () => {
-    expect(() => requirePositiveInteger(Number.MAX_SAFE_INTEGER + 1, "id")).toThrow(ApiError);
-    expect(() => requirePositiveInteger(Number.MAX_SAFE_INTEGER + 2, "id")).toThrow(ApiError);
-    expect(() => requirePositiveInteger(String(Number.MAX_SAFE_INTEGER + 1), "id")).toThrow(ApiError);
-    expect(() => requirePositiveInteger(String(Number.MAX_SAFE_INTEGER + 2), "id")).toThrow(ApiError);
+    expect(() =>
+      requirePositiveInteger(Number.MAX_SAFE_INTEGER + 1, "id"),
+    ).toThrow(ApiError);
+    expect(() =>
+      requirePositiveInteger(Number.MAX_SAFE_INTEGER + 2, "id"),
+    ).toThrow(ApiError);
+    expect(() =>
+      requirePositiveInteger(String(Number.MAX_SAFE_INTEGER + 1), "id"),
+    ).toThrow(ApiError);
+    expect(() =>
+      requirePositiveInteger(String(Number.MAX_SAFE_INTEGER + 2), "id"),
+    ).toThrow(ApiError);
   });
 
   it("rejects zero", () => {
@@ -169,5 +186,42 @@ describe("normalizeAsset", () => {
 
   it("rejects a value that is too long (gt 12 chars)", () => {
     expect(() => normalizeAsset("THISISWAYTOOLONGASSETCODE")).toThrow(ApiError);
+  });
+});
+
+describe("optionalBooleanFlag", () => {
+  it("defaults to false when the value is absent", () => {
+    expect(optionalBooleanFlag(undefined, "dryRun")).toBe(false);
+  });
+
+  it("passes through real booleans", () => {
+    expect(optionalBooleanFlag(true, "dryRun")).toBe(true);
+    expect(optionalBooleanFlag(false, "dryRun")).toBe(false);
+  });
+
+  it('accepts "true" and "false" strings in any casing, trimmed', () => {
+    expect(optionalBooleanFlag("true", "dryRun")).toBe(true);
+    expect(optionalBooleanFlag("  TRUE  ", "dryRun")).toBe(true);
+    expect(optionalBooleanFlag("False", "dryRun")).toBe(false);
+  });
+
+  it("rejects truthy-looking values instead of coercing them", () => {
+    for (const value of ["yes", "1", "on", "ture", ""]) {
+      expect(() => optionalBooleanFlag(value, "dryRun")).toThrow(ApiError);
+    }
+  });
+
+  it("rejects non-string, non-boolean values such as a repeated query param", () => {
+    expect(() => optionalBooleanFlag(["true", "true"], "dryRun")).toThrow(
+      ApiError,
+    );
+    expect(() => optionalBooleanFlag(1, "dryRun")).toThrow(ApiError);
+    expect(() => optionalBooleanFlag(null, "dryRun")).toThrow(ApiError);
+  });
+
+  it("names the offending field and the accepted values in the message", () => {
+    expect(() => optionalBooleanFlag("nope", "dryRun")).toThrow(
+      '"dryRun" must be "true" or "false"',
+    );
   });
 });

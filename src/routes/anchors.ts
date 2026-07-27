@@ -8,11 +8,18 @@ import { SettlementService } from "../services/settlementService";
 import { applySort } from "../utils/sorting";
 import { paginate } from "../utils/pagination";
 import { toCsv } from "../utils/csv";
+import { optionalBooleanFlag } from "../utils/validation";
 
 const SORTABLE_FIELDS = ["id", "name", "registeredAt"];
 const CSV_COLUMNS = ["id", "name", "registeredAt", "active"];
 
-const SETTLEMENT_SORTABLE_FIELDS = ["id", "amount", "fee", "status", "createdAt"];
+const SETTLEMENT_SORTABLE_FIELDS = [
+  "id",
+  "amount",
+  "fee",
+  "status",
+  "createdAt",
+];
 const SETTLEMENT_CSV_COLUMNS = [
   "id",
   "anchor",
@@ -24,7 +31,10 @@ const SETTLEMENT_CSV_COLUMNS = [
   "cancelReason",
 ];
 
-export function anchorRouter(service: AnchorService, settlements?: SettlementService): Router {
+export function anchorRouter(
+  service: AnchorService,
+  settlements?: SettlementService,
+): Router {
   const router = Router();
 
   // Register a new anchor.
@@ -34,9 +44,17 @@ export function anchorRouter(service: AnchorService, settlements?: SettlementSer
   });
 
   // Register a batch of anchors atomically.
+  //
+  // With ?dryRun=true the batch runs through the identical validation but
+  // nothing is persisted — a preflight check for onboarding UIs. The response
+  // shape and status match a real call, plus a `dryRun` flag so the caller can
+  // confirm no registration happened. `dryRun` is strictly parsed: only
+  // "true"/"false" are accepted, so a typo can never silently perform a real
+  // registration.
   router.post("/bulk", (req: Request, res: Response) => {
-    const anchors = service.registerBulk((req.body ?? {}).anchors);
-    res.status(201).json({ anchors });
+    const dryRun = optionalBooleanFlag(req.query.dryRun, "dryRun");
+    const anchors = service.registerBulk((req.body ?? {}).anchors, dryRun);
+    res.status(201).json({ anchors, dryRun });
   });
 
   // List anchors, optionally filtered via ?status=active|inactive and/or a
@@ -85,7 +103,14 @@ export function anchorRouter(service: AnchorService, settlements?: SettlementSer
     service.get(req.params.id);
 
     if (!settlements) {
-      res.status(501).json({ error: { code: "NOT_IMPLEMENTED", message: "settlements service unavailable" } });
+      res
+        .status(501)
+        .json({
+          error: {
+            code: "NOT_IMPLEMENTED",
+            message: "settlements service unavailable",
+          },
+        });
       return;
     }
 
@@ -104,7 +129,10 @@ export function anchorRouter(service: AnchorService, settlements?: SettlementSer
       page: req.query.page,
       pageSize: req.query.pageSize,
     });
-    res.json({ settlements: page.items, pagination: { ...page, items: undefined } });
+    res.json({
+      settlements: page.items,
+      pagination: { ...page, items: undefined },
+    });
   });
 
   return router;

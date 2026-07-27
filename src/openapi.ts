@@ -26,8 +26,7 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       },
       "/health/ready": {
         get: {
-          summary:
-            "Readiness probe (503 once graceful shutdown has begun)",
+          summary: "Readiness probe (503 once graceful shutdown has begun)",
         },
       },
       "/api/v1/info": {
@@ -41,12 +40,12 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       },
       "/api/v1/liquidity": {
         post: {
-          summary:
-            "Record (or accumulate) liquidity for an anchor/asset pair",
+          summary: "Record (or accumulate) liquidity for an anchor/asset pair",
         },
-        get: { 
+        get: {
           summary: "List aggregated liquidity pools",
-          description: "Returns an array of Pool objects, each containing asset, total, anchors count, and a lastUpdated timestamp.",
+          description:
+            "Returns an array of Pool objects, each containing asset, total, anchors count, and a lastUpdated timestamp.",
         },
       },
       "/api/v1/liquidity/withdraw": {
@@ -59,9 +58,10 @@ export function buildOpenApiSpec(): Record<string, unknown> {
         get: { summary: "List raw liquidity entries for a single anchor" },
       },
       "/api/v1/liquidity/{asset}": {
-        get: { 
+        get: {
           summary: "Read the aggregated pool for one asset",
-          description: "Returns a single Pool object containing asset, total, anchors count, and a lastUpdated timestamp.",
+          description:
+            "Returns a single Pool object containing asset, total, anchors count, and a lastUpdated timestamp.",
         },
       },
       "/api/v1/liquidity/{anchor}/{asset}": {
@@ -103,7 +103,18 @@ export function buildOpenApiSpec(): Record<string, unknown> {
         post: { summary: "Reactivate a previously deactivated anchor" },
       },
       "/api/v1/anchors/bulk": {
-        post: { summary: "Register a batch of anchors atomically" },
+        post: {
+          summary: "Register a batch of anchors atomically",
+          description:
+            "Validates every entry (against both the existing registry and " +
+            "duplicate ids within the batch) before storing any of them. " +
+            "Pass ?dryRun=true to run that identical validation as a " +
+            "read-only preflight check: the response reports the same " +
+            "success/error outcome and the would-be-registered anchors, but " +
+            'nothing is persisted. `dryRun` accepts only "true" or ' +
+            '"false"; any other value is a 400.',
+          parameters: ["dryRun"],
+        },
       },
       "/api/v1/anchors/{id}/settlements": {
         get: {
