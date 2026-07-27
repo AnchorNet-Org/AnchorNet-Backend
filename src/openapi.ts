@@ -64,6 +64,17 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       "/api/v1/liquidity/entries": {
         get: { summary: "List raw per-anchor liquidity entries" },
       },
+
+      "/api/v1/liquidity/withdrawals": {
+        get: {
+          summary: "Recent successful liquidity withdrawals, oldest first",
+          description:
+            "Read-only audit trail of withdrawals recorded by POST /api/v1/liquidity/withdraw. " +
+            "Each entry records the anchor, asset, amount withdrawn, the anchor's resulting " +
+            "balance, and an ISO-8601 timestamp, and persists even after an entry is removed " +
+            "once its balance reaches zero. Bounded to the most recent records.",
+        },
+      },
       "/api/v1/liquidity/anchors/{anchor}": {
         get: { summary: "List raw liquidity entries for a single anchor" },
       },
