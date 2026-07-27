@@ -26,8 +26,7 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       },
       "/health/ready": {
         get: {
-          summary:
-            "Readiness probe (503 once graceful shutdown has begun)",
+          summary: "Readiness probe (503 once graceful shutdown has begun)",
         },
       },
       "/api/v1/info": {
@@ -41,16 +40,26 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       },
       "/api/v1/liquidity": {
         post: {
-          summary:
-            "Record (or accumulate) liquidity for an anchor/asset pair",
+          summary: "Record (or accumulate) liquidity for an anchor/asset pair",
         },
-        get: { 
+        get: {
           summary: "List aggregated liquidity pools",
-          description: "Returns an array of Pool objects, each containing asset, total, anchors count, and a lastUpdated timestamp.",
+          description:
+            "Returns an array of Pool objects, each containing asset, total, anchors count, and a lastUpdated timestamp.",
         },
       },
       "/api/v1/liquidity/withdraw": {
         post: { summary: "Withdraw previously recorded liquidity" },
+      },
+      "/api/v1/liquidity/transfer": {
+        post: {
+          summary:
+            "Atomically transfer liquidity between two anchors for the same asset. " +
+            "Decrements the source anchor and increments the destination anchor in a " +
+            "single operation, so the pool total never changes mid-transfer. Returns " +
+            "400 (INSUFFICIENT_LIQUIDITY) without changing any balance when the source " +
+            "anchor cannot cover the amount.",
+        },
       },
       "/api/v1/liquidity/entries": {
         get: { summary: "List raw per-anchor liquidity entries" },
@@ -59,9 +68,10 @@ export function buildOpenApiSpec(): Record<string, unknown> {
         get: { summary: "List raw liquidity entries for a single anchor" },
       },
       "/api/v1/liquidity/{asset}": {
-        get: { 
+        get: {
           summary: "Read the aggregated pool for one asset",
-          description: "Returns a single Pool object containing asset, total, anchors count, and a lastUpdated timestamp.",
+          description:
+            "Returns a single Pool object containing asset, total, anchors count, and a lastUpdated timestamp.",
         },
       },
       "/api/v1/liquidity/{anchor}/{asset}": {

@@ -20,6 +20,12 @@ export function liquidityRouter(service: LiquidityService): Router {
     res.json(entry);
   });
 
+  // Atomically transfer liquidity between two anchors for the same asset.
+  router.post("/transfer", (req: Request, res: Response) => {
+    const result = service.transferLiquidity(req.body ?? {});
+    res.json(result);
+  });
+
   // List aggregated pools across all assets.
   router.get("/", (_req: Request, res: Response) => {
     res.json({ pools: service.listPools() });
