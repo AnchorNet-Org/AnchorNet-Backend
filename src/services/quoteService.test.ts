@@ -12,6 +12,15 @@ function seed() {
   return repo;
 }
 
+function repoWithTiedBalances(anchors: string[]) {
+  const repo = new LiquidityRepository();
+  const liquidity = new LiquidityService(repo);
+  for (const anchor of anchors) {
+    liquidity.addLiquidity({ anchor, asset: "USDC", amount: 100 });
+  }
+  return repo;
+}
+
 describe("QuoteService", () => {
   it("routes through the largest anchor first with the exact portion", () => {
     const quote = new QuoteService(seed()).quote({
@@ -90,6 +99,22 @@ describe("QuoteService", () => {
     });
 
     expect(quote.fee).toBe(1);
+  });
+
+  it("orders tied anchor balances by anchor id regardless of insertion order", () => {
+    const quoteWithAlphaInsertedFirst = new QuoteService(
+      repoWithTiedBalances(["alpha", "bravo"]),
+    ).quote({ asset: "USDC", amount: 200 });
+    const quoteWithBravoInsertedFirst = new QuoteService(
+      repoWithTiedBalances(["bravo", "alpha"]),
+    ).quote({ asset: "USDC", amount: 200 });
+
+    const expectedRoute = [
+      { anchor: "alpha", portion: 100 },
+      { anchor: "bravo", portion: 100 },
+    ];
+    expect(quoteWithAlphaInsertedFirst.route).toEqual(expectedRoute);
+    expect(quoteWithBravoInsertedFirst.route).toEqual(expectedRoute);
   });
 
   it("rejects requests that exceed available liquidity", () => {

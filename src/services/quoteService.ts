@@ -32,7 +32,7 @@ export class QuoteService {
     const sources = this.repo
       .byAsset(asset)
       .slice()
-      .sort((a, b) => b.amount - a.amount);
+      .sort((a, b) => b.amount - a.amount || a.anchor.localeCompare(b.anchor));
 
     const available = sources.reduce((sum, e) => sum + e.amount, 0);
     if (available < amount) {
