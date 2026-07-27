@@ -176,7 +176,13 @@ export function buildOpenApiSpec(): Record<string, unknown> {
         get: { summary: "Aggregate network metrics" },
       },
       "/api/v1/metrics/history": {
-        get: { summary: "Recent aggregate metrics snapshots, oldest first" },
+        get: {
+          summary: "Recent aggregate metrics snapshots, oldest first",
+          description:
+            "Returns the buffered metrics history. Pass ?since=<ISO-8601 timestamp> " +
+            "to return only snapshots with timestamp values strictly after that point.",
+          parameters: ["since"],
+        },
       },
     },
   };
