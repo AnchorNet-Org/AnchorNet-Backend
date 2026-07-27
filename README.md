@@ -113,11 +113,19 @@ POST /api/v1/settlements/:id/execute – execute a pending settlement
 POST /api/v1/settlements/:id/cancel – cancel and release reserved
 liquidity; accepts an optional { reason } recorded on the settlement
 Metrics
-GET /api/v1/metrics – aggregate counts (anchors, pools, liquidity,
-settlements). Each read also appends a timestamped snapshot to an in-memory
+GET /api/v1/metrics – aggregate counts (anchors, activeAnchors, pools,
+totalLiquidity, settlements, pendingSettlements) plus settled-value totals:
+totalSettledAmount (sum of settlement amount) and totalFeesCollected (sum
+of settlement fee). Both value totals are computed from executed
+settlements only — a pending settlement has merely reserved liquidity and
+may still be cancelled, and a cancelled settlement never moved value, so
+neither contributes. This lets an operator read total value settled and
+total protocol fees earned without fetching every settlement and summing
+client-side. Each read also appends a timestamped snapshot to an in-memory
 rolling history (last 50 reads).
 GET /api/v1/metrics/history – the recorded metrics snapshots, oldest first
-({ snapshots: [...] })
+({ snapshots: [...] }); each snapshot carries the same fields as
+GET /api/v1/metrics plus an ISO-8601 timestamp
 Errors use a uniform envelope: { "error": { "code", "message" } }, including
 malformed JSON (400) and oversized request bodies (413,
 PAYLOAD_TOO_LARGE). Every response carries an x-request-id header for
