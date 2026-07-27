@@ -47,6 +47,15 @@ previously recorded by an anchor, mirroring the on-chain contract's
 withdraw_liquidity. Reduces the anchor's balance and removes the entry
 once it reaches zero. Returns 404 if the anchor holds no balance in the
 asset, or 400 (INSUFFICIENT_LIQUIDITY) if the amount exceeds it.
+POST /api/v1/liquidity/transfer – atomically move liquidity
+{ from, to, asset, amount } between two anchors for the same asset.
+Decrements the source anchor and increments the destination anchor in a
+single operation, so the pool total never dips mid-move (unlike a
+withdraw followed by a separate add). Returns the updated entries for
+both anchors as { from, to }. Returns 404 if the source anchor holds no
+balance in the asset, 400 (INSUFFICIENT_LIQUIDITY) if the amount exceeds
+the source balance — in which case neither balance changes — and 400 if
+from and to are the same anchor.
 GET /api/v1/liquidity – list aggregated pools { pools: [{ asset, total, anchors }] }
 GET /api/v1/liquidity/entries – list raw per-anchor entries
 GET /api/v1/liquidity/:asset – aggregated pool for one asset (404 if none)

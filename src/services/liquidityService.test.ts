@@ -149,6 +149,172 @@ describe("LiquidityService", () => {
     expect(entriesB).toHaveLength(1);
     expect(entriesB[0].asset).toBe("USDC");
   });
+
+  describe("transferLiquidity", () => {
+    it("moves liquidity between two anchors atomically in one operation", () => {
+      const service = makeService();
+      service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
+      service.addLiquidity({ anchor: "anchorB", asset: "USDC", amount: 50 });
+
+      const result = service.transferLiquidity({
+        from: "anchorA",
+        to: "anchorB",
+        asset: "usdc",
+        amount: 40,
+      });
+
+      expect(result.from).toMatchObject({
+        anchor: "anchorA",
+        asset: "USDC",
+        amount: 60,
+      });
+      expect(result.to).toMatchObject({
+        anchor: "anchorB",
+        asset: "USDC",
+        amount: 90,
+      });
+      // The pool total is unchanged: the transfer never reduced it.
+      expect(service.getPool("USDC").total).toBe(150);
+    });
+
+    it("creates the destination entry when the target anchor has none", () => {
+      const service = makeService();
+      service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+      const result = service.transferLiquidity({
+        from: "anchorA",
+        to: "anchorB",
+        asset: "USDC",
+        amount: 25,
+      });
+
+      expect(result.to.amount).toBe(25);
+      expect(service.listByAnchor("anchorB")).toHaveLength(1);
+      expect(service.getPool("USDC").total).toBe(100);
+    });
+
+    it("removes the source entry once its full balance is transferred", () => {
+      const service = makeService();
+      service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
+      service.addLiquidity({ anchor: "anchorB", asset: "USDC", amount: 10 });
+
+      const result = service.transferLiquidity({
+        from: "anchorA",
+        to: "anchorB",
+        asset: "USDC",
+        amount: 100,
+      });
+
+      expect(result.from.amount).toBe(0);
+      expect(result.to.amount).toBe(110);
+      expect(service.listByAnchor("anchorA")).toHaveLength(0);
+      expect(service.getPool("USDC").total).toBe(110);
+    });
+
+    it("leaves both anchors' balances unchanged when the source is insufficient", () => {
+      const service = makeService();
+      service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
+      service.addLiquidity({ anchor: "anchorB", asset: "USDC", amount: 50 });
+
+      expect(() =>
+        service.transferLiquidity({
+          from: "anchorA",
+          to: "anchorB",
+          asset: "USDC",
+          amount: 150,
+        }),
+      ).toThrow(
+        expect.objectContaining({
+          status: 400,
+          code: "INSUFFICIENT_LIQUIDITY",
+        }),
+      );
+
+      // Atomicity: neither side moved and the pool total is intact.
+      expect(service.listByAnchor("anchorA")[0].amount).toBe(100);
+      expect(service.listByAnchor("anchorB")[0].amount).toBe(50);
+      expect(service.getPool("USDC").total).toBe(150);
+    });
+
+    it("throws 404 without creating a destination entry when the source has no balance", () => {
+      const service = makeService();
+      service.addLiquidity({ anchor: "anchorB", asset: "USDC", amount: 50 });
+
+      expect(() =>
+        service.transferLiquidity({
+          from: "anchorA",
+          to: "anchorB",
+          asset: "USDC",
+          amount: 10,
+        }),
+      ).toThrow(expect.objectContaining({ status: 404, code: "NOT_FOUND" }));
+
+      expect(service.listByAnchor("anchorA")).toHaveLength(0);
+      expect(service.listByAnchor("anchorB")[0].amount).toBe(50);
+      expect(service.getPool("USDC").total).toBe(50);
+    });
+
+    it("rejects a transfer to the same anchor without changing its balance", () => {
+      const service = makeService();
+      service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+      expect(() =>
+        service.transferLiquidity({
+          from: "anchorA",
+          to: "anchorA",
+          asset: "USDC",
+          amount: 50,
+        }),
+      ).toThrow(ApiError);
+
+      expect(service.listByAnchor("anchorA")[0].amount).toBe(100);
+      expect(service.getPool("USDC").total).toBe(100);
+    });
+
+    it("rejects invalid inputs without changing any balance", () => {
+      const service = makeService();
+      service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+      const badInputs = [
+        { from: "  ", to: "anchorB", asset: "USDC", amount: 10 },
+        { from: "anchorA", to: "", asset: "USDC", amount: 10 },
+        { from: "anchorA", to: "anchorB", asset: "USDC", amount: -5 },
+        { from: "anchorA", to: "anchorB", asset: "USDC", amount: 0 },
+        {
+          from: "anchorA",
+          to: "anchorB",
+          asset: "TOOLONGASSETCODE",
+          amount: 10,
+        },
+      ];
+      for (const input of badInputs) {
+        expect(() => service.transferLiquidity(input)).toThrow(ApiError);
+      }
+
+      expect(service.listByAnchor("anchorA")[0].amount).toBe(100);
+      expect(service.listByAnchor("anchorB")).toHaveLength(0);
+      expect(service.getPool("USDC").total).toBe(100);
+    });
+
+    it("does not touch balances in other assets", () => {
+      const service = makeService();
+      service.addLiquidity({ anchor: "anchorA", asset: "USDC", amount: 100 });
+      service.addLiquidity({ anchor: "anchorA", asset: "EURC", amount: 75 });
+
+      service.transferLiquidity({
+        from: "anchorA",
+        to: "anchorB",
+        asset: "USDC",
+        amount: 40,
+      });
+
+      const anchorAEurc = service
+        .listByAnchor("anchorA")
+        .find((e) => e.asset === "EURC");
+      expect(anchorAEurc?.amount).toBe(75);
+      expect(service.getPool("EURC").total).toBe(75);
+    });
+  });
 });
 
 describe("LiquidityService withdrawal history", () => {

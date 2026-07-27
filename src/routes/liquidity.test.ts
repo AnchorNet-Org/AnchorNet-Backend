@@ -290,4 +290,130 @@ describe("liquidity routes", () => {
     expect(Array.isArray(res.body.withdrawals)).toBe(true);
     expect(res.body.withdrawals).toEqual([]);
   });
+  it("transfers liquidity between two anchors in a single atomic operation", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorB", asset: "USDC", amount: 300 });
+
+    const res = await request(app)
+      .post("/api/v1/liquidity/transfer")
+      .send({ from: "anchorA", to: "anchorB", asset: "usdc", amount: 200 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.from).toMatchObject({
+      anchor: "anchorA",
+      asset: "USDC",
+      amount: 300,
+    });
+    expect(res.body.to).toMatchObject({
+      anchor: "anchorB",
+      asset: "USDC",
+      amount: 500,
+    });
+
+    // The pool total is unchanged by the transfer.
+    const pool = await request(app).get("/api/v1/liquidity/USDC");
+    expect(pool.body.total).toBe(800);
+    expect(pool.body.anchors).toBe(2);
+  });
+
+  it("creates the destination entry when transferring to an anchor with no balance", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+
+    const res = await request(app)
+      .post("/api/v1/liquidity/transfer")
+      .send({ from: "anchorA", to: "anchorB", asset: "USDC", amount: 500 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.from.amount).toBe(0);
+    expect(res.body.to.amount).toBe(500);
+
+    const entries = await request(app).get("/api/v1/liquidity/entries");
+    expect(entries.body.entries).toHaveLength(1);
+    expect(entries.body.entries[0]).toMatchObject({
+      anchor: "anchorB",
+      amount: 500,
+    });
+  });
+
+  it("returns 400 INSUFFICIENT_LIQUIDITY and leaves both balances unchanged", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorB", asset: "USDC", amount: 300 });
+
+    const res = await request(app)
+      .post("/api/v1/liquidity/transfer")
+      .send({ from: "anchorA", to: "anchorB", asset: "USDC", amount: 200 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("INSUFFICIENT_LIQUIDITY");
+
+    // Atomicity: the failed transfer changed nothing on either side.
+    const entries = await request(app).get("/api/v1/liquidity/entries");
+    const byAnchor = Object.fromEntries(
+      entries.body.entries.map((e: any) => [e.anchor, e.amount]),
+    );
+    expect(byAnchor).toEqual({ anchorA: 100, anchorB: 300 });
+
+    const pool = await request(app).get("/api/v1/liquidity/USDC");
+    expect(pool.body.total).toBe(400);
+  });
+
+  it("returns 404 when transferring from an anchor with no balance", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorB", asset: "USDC", amount: 300 });
+
+    const res = await request(app)
+      .post("/api/v1/liquidity/transfer")
+      .send({ from: "anchorA", to: "anchorB", asset: "USDC", amount: 10 });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+
+    const entries = await request(app).get("/api/v1/liquidity/entries");
+    expect(entries.body.entries).toHaveLength(1);
+    expect(entries.body.entries[0]).toMatchObject({
+      anchor: "anchorB",
+      amount: 300,
+    });
+  });
+
+  it("returns 400 for invalid transfer input", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/liquidity/transfer")
+      .send({ from: "anchorA", to: "", asset: "USDC", amount: -5 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
+
+  it("returns 400 when transferring an anchor's liquidity to itself", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+    const res = await request(app)
+      .post("/api/v1/liquidity/transfer")
+      .send({ from: "anchorA", to: "anchorA", asset: "USDC", amount: 50 });
+
+    expect(res.status).toBe(400);
+
+    const pool = await request(app).get("/api/v1/liquidity/USDC");
+    expect(pool.body.total).toBe(100);
+  });
 });

@@ -51,6 +51,16 @@ export function buildOpenApiSpec(): Record<string, unknown> {
       "/api/v1/liquidity/withdraw": {
         post: { summary: "Withdraw previously recorded liquidity" },
       },
+      "/api/v1/liquidity/transfer": {
+        post: {
+          summary:
+            "Atomically transfer liquidity between two anchors for the same asset. " +
+            "Decrements the source anchor and increments the destination anchor in a " +
+            "single operation, so the pool total never changes mid-transfer. Returns " +
+            "400 (INSUFFICIENT_LIQUIDITY) without changing any balance when the source " +
+            "anchor cannot cover the amount.",
+        },
+      },
       "/api/v1/liquidity/entries": {
         get: { summary: "List raw per-anchor liquidity entries" },
       },
