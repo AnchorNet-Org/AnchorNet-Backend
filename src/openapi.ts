@@ -62,7 +62,14 @@ export function buildOpenApiSpec(): Record<string, unknown> {
         },
       },
       "/api/v1/liquidity/entries": {
-        get: { summary: "List raw per-anchor liquidity entries" },
+        get: {
+          summary: "List raw per-anchor liquidity entries",
+          description:
+            "Returns { entries: [...] }. This static path is registered before the " +
+            "catch-all GET /api/v1/liquidity/{asset}; that ordering is load-bearing, " +
+            "since reversing it would make this path resolve as a pool lookup for an " +
+            'asset named "ENTRIES".',
+        },
       },
 
       "/api/v1/liquidity/withdrawals": {
