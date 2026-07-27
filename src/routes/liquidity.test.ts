@@ -25,7 +25,12 @@ describe("liquidity routes", () => {
     const res = await request(app).get("/api/v1/liquidity");
     expect(res.status).toBe(200);
     expect(res.body.pools).toEqual([
-      { asset: "USDC", total: 800, anchors: 2, lastUpdated: expect.any(String) },
+      {
+        asset: "USDC",
+        total: 800,
+        anchors: 2,
+        lastUpdated: expect.any(String),
+      },
     ]);
   });
 
@@ -125,9 +130,7 @@ describe("liquidity routes", () => {
       .post("/api/v1/liquidity")
       .send({ anchor: "anchorB", asset: "USDC", amount: 300 });
 
-    const res = await request(app).delete(
-      "/api/v1/liquidity/anchorA/usdc",
-    );
+    const res = await request(app).delete("/api/v1/liquidity/anchorA/usdc");
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -162,7 +165,17 @@ describe("liquidity routes", () => {
 
   it("returns 400 for exotic invalid amounts (NaN, Infinity, string amount)", async () => {
     const app = createApp();
-    const badAmounts = [NaN, Infinity, -Infinity, -0, "5", "abc", null, [5], {}];
+    const badAmounts = [
+      NaN,
+      Infinity,
+      -Infinity,
+      -0,
+      "5",
+      "abc",
+      null,
+      [5],
+      {},
+    ];
     for (const amount of badAmounts) {
       const res = await request(app)
         .post("/api/v1/liquidity")
@@ -185,10 +198,10 @@ describe("liquidity routes", () => {
       .send({ anchor: "anchorA", asset: "EURC", amount: 150 });
 
     const res = await request(app).get("/api/v1/liquidity/anchors/anchorA");
-    
+
     expect(res.status).toBe(200);
     expect(res.body.entries).toHaveLength(2);
-    
+
     const assets = res.body.entries.map((e: any) => e.asset).sort();
     expect(assets).toEqual(["EURC", "USDC"]);
   });
@@ -203,5 +216,78 @@ describe("liquidity routes", () => {
     const res = await request(app).get("/api/v1/liquidity/ANCHORS");
     expect(res.status).toBe(200);
     expect(res.body.total).toBe(500);
+  });
+
+  it("starts with an empty withdrawal history", async () => {
+    const res = await request(createApp()).get("/api/v1/liquidity/withdrawals");
+
+    expect(res.status).toBe(200);
+    expect(res.body.withdrawals).toEqual([]);
+  });
+
+  it("records a successful withdrawal in the withdrawal history", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+
+    const res = await request(app)
+      .post("/api/v1/liquidity/withdraw")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 200 });
+
+    expect(res.status).toBe(200);
+
+    const history = await request(app).get("/api/v1/liquidity/withdrawals");
+    expect(history.status).toBe(200);
+    expect(history.body.withdrawals).toHaveLength(1);
+    expect(history.body.withdrawals[0]).toEqual({
+      anchor: "anchorA",
+      asset: "USDC",
+      amount: 200,
+      remainingBalance: 300,
+      timestamp: expect.any(String),
+    });
+  });
+
+  it("records a full withdrawal with a zero remaining balance", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+
+    await request(app)
+      .post("/api/v1/liquidity/withdraw")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+
+    const history = await request(app).get("/api/v1/liquidity/withdrawals");
+    expect(history.body.withdrawals[0].remainingBalance).toBe(0);
+  });
+
+  it("does not record a withdrawal that fails (insufficient balance)", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+
+    const failed = await request(app)
+      .post("/api/v1/liquidity/withdraw")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 200 });
+    expect(failed.status).toBe(400);
+
+    const history = await request(app).get("/api/v1/liquidity/withdrawals");
+    expect(history.body.withdrawals).toEqual([]);
+  });
+
+  it("the /withdrawals static route takes precedence over /:asset", async () => {
+    const app = createApp();
+    // With no liquidity for any asset, a /:asset lookup would 404. Because the
+    // static /withdrawals route is registered before /:asset, GET /withdrawals
+    // must resolve to the history handler and return 200 with a withdrawals
+    // array — not be swallowed by the catch-all asset lookup.
+    const res = await request(app).get("/api/v1/liquidity/withdrawals");
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.withdrawals)).toBe(true);
+    expect(res.body.withdrawals).toEqual([]);
   });
 });

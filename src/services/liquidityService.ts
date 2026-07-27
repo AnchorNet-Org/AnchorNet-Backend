@@ -6,17 +6,32 @@
  */
 
 import { LiquidityRepository } from "../repositories/liquidityRepository";
-import { LiquidityEntry, Pool } from "../models/liquidity";
+import { LiquidityEntry, Pool, WithdrawalRecord } from "../models/liquidity";
 import { ApiError } from "../errors/ApiError";
 import { SettlementService } from "./settlementService";
+import { BoundedHistory } from "../utils/history";
 import {
   normalizeAsset,
   requirePositiveNumber,
   requireString,
 } from "../utils/validation";
 
+/**
+ * Maximum number of withdrawal records retained in memory. Mirrors the bounded
+ * rolling-window pattern used by `routes/metrics.ts`, keeping an audit trail of
+ * recent withdrawals without unbounded memory growth.
+ */
+const MAX_WITHDRAWAL_HISTORY = 100;
+
 export class LiquidityService {
-  constructor(private readonly repo: LiquidityRepository, private readonly settlementService?: SettlementService) {}
+  private readonly withdrawalHistory = new BoundedHistory<WithdrawalRecord>(
+    MAX_WITHDRAWAL_HISTORY,
+  );
+
+  constructor(
+    private readonly repo: LiquidityRepository,
+    private readonly settlementService?: SettlementService,
+  ) {}
 
   /**
    * Records `amount` of liquidity from `anchor` in `asset`. If the anchor
@@ -85,6 +100,20 @@ export class LiquidityService {
     const remaining = existing.amount - amount;
     const updatedAt = new Date().toISOString();
 
+    // Record the successful withdrawal for auditability BEFORE mutating state.
+    // This runs only after every guard above has passed, so a failed withdrawal
+    // (unknown balance, insufficient funds, or reserved-liquidity breach) leaves
+    // no record. `remaining` is computed once and used by both branches below, so
+    // the recorded `remainingBalance` is correct whether the entry survives or is
+    // removed once it reaches zero.
+    this.withdrawalHistory.push({
+      anchor,
+      asset,
+      amount,
+      remainingBalance: remaining,
+      timestamp: updatedAt,
+    });
+
     if (remaining === 0) {
       this.repo.remove(anchor, asset);
       return { anchor, asset, amount: 0, updatedAt };
@@ -136,5 +165,19 @@ export class LiquidityService {
   listByAnchor(anchorInput: unknown): LiquidityEntry[] {
     const anchor = requireString(anchorInput, "anchor");
     return this.repo.byAnchor(anchor);
+  }
+
+  /**
+   * Returns the in-memory audit trail of successful withdrawals, oldest first.
+   *
+   * Each record captures the anchor, asset, amount withdrawn, the resulting
+   * balance, and an ISO-8601 timestamp. Bounded to the most recent
+   * {@link MAX_WITHDRAWAL_HISTORY} entries; older entries are evicted
+   * automatically. This survives the removal of a `LiquidityEntry` once its
+   * balance reaches zero, where the mutating-request audit-log middleware does
+   * not (it records only method/path/status, not amounts).
+   */
+  listWithdrawals(): WithdrawalRecord[] {
+    return this.withdrawalHistory.all();
   }
 }

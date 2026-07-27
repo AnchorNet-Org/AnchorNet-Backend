@@ -14,6 +14,26 @@ export interface LiquidityEntry {
   updatedAt: string;
 }
 
+/** A successful withdrawal event recorded for auditability.
+ *
+ * Unlike {@link LiquidityEntry} (which reflects only the *current* balance),
+ * a withdrawal record is append-only: it captures the amount moved and the
+ * resulting balance at the moment the withdrawal completed, even after the
+ * underlying entry has been reduced to zero and removed.
+ */
+export interface WithdrawalRecord {
+  /** Anchor that withdrew the liquidity. */
+  anchor: string;
+  /** Asset code the withdrawal was denominated in (e.g. "USDC"). */
+  asset: string;
+  /** Amount withdrawn, in the asset's smallest unit. */
+  amount: number;
+  /** The anchor's resulting balance for the asset after the withdrawal (0 once fully drained). */
+  remainingBalance: number;
+  /** ISO-8601 timestamp of the withdrawal. */
+  timestamp: string;
+}
+
 /** Aggregate liquidity available for an asset across all anchors. */
 export interface Pool {
   asset: string;
