@@ -1,4 +1,6 @@
-import { toCsv } from "./csv";
+import { csvColumnsFor, toCsv } from "./csv";
+import { Anchor } from "../models/anchor";
+import { Settlement } from "../models/settlement";
 
 /** Parses one field emitted by the CSV serializer. */
 function parseEscapedField(field: string): string {
@@ -91,5 +93,70 @@ describe("toCsv", () => {
 
       expect(parseEscapedField(serializedField)).toBe(expected);
     });
+  });
+});
+
+describe("csvColumnsFor", () => {
+  it("returns the column tuple unchanged, preserving order", () => {
+    const columns = csvColumnsFor<Anchor>()([
+      "id",
+      "name",
+      "registeredAt",
+      "active",
+    ]);
+
+    expect(columns).toEqual(["id", "name", "registeredAt", "active"]);
+  });
+
+  it("produces a tuple usable as the column list for toCsv", () => {
+    const columns = csvColumnsFor<Anchor>()([
+      "id",
+      "name",
+      "registeredAt",
+      "active",
+    ]);
+    const csv = toCsv(
+      [
+        {
+          id: "anchorA",
+          name: "Anchor A",
+          registeredAt: "2026-01-01T00:00:00.000Z",
+          active: true,
+        },
+      ],
+      columns,
+    );
+
+    expect(csv).toBe(
+      "id,name,registeredAt,active\n" +
+        "anchorA,Anchor A,2026-01-01T00:00:00.000Z,true\n",
+    );
+  });
+
+  it("accepts optional model fields as columns", () => {
+    const columns = csvColumnsFor<Settlement>()([
+      "id",
+      "anchor",
+      "asset",
+      "amount",
+      "fee",
+      "status",
+      "createdAt",
+      "cancelReason",
+    ]);
+
+    expect(columns).toContain("cancelReason");
+    expect(columns).toHaveLength(8);
+  });
+
+  it("allows an order that differs from the model's declaration order", () => {
+    const columns = csvColumnsFor<Anchor>()([
+      "active",
+      "registeredAt",
+      "name",
+      "id",
+    ]);
+
+    expect(columns).toEqual(["active", "registeredAt", "name", "id"]);
   });
 });

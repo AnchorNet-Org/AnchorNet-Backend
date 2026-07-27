@@ -5,13 +5,24 @@
 import { Router, Request, Response } from "express";
 import { AnchorService } from "../services/anchorService";
 import { SettlementService } from "../services/settlementService";
+import { Anchor } from "../models/anchor";
+import { Settlement } from "../models/settlement";
 import { applySort } from "../utils/sorting";
 import { paginate } from "../utils/pagination";
-import { toCsv } from "../utils/csv";
+import { csvColumnsFor, toCsv } from "../utils/csv";
 import { optionalBooleanFlag } from "../utils/validation";
 
 const SORTABLE_FIELDS = ["id", "name", "registeredAt"];
-const CSV_COLUMNS = ["id", "name", "registeredAt", "active"];
+
+// Locked to `Anchor` at compile time: adding a field to the model without
+// adding a column here fails the build instead of silently shrinking the
+// CSV export. See `csvColumnsFor` in ../utils/csv.
+const CSV_COLUMNS = csvColumnsFor<Anchor>()([
+  "id",
+  "name",
+  "registeredAt",
+  "active",
+]);
 
 const SETTLEMENT_SORTABLE_FIELDS = [
   "id",
@@ -20,7 +31,10 @@ const SETTLEMENT_SORTABLE_FIELDS = [
   "status",
   "createdAt",
 ];
-const SETTLEMENT_CSV_COLUMNS = [
+
+// Must stay identical to the column list in ../routes/settlements.ts so the
+// nested export matches the top-level one; both are locked to `Settlement`.
+const SETTLEMENT_CSV_COLUMNS = csvColumnsFor<Settlement>()([
   "id",
   "anchor",
   "asset",
@@ -29,7 +43,7 @@ const SETTLEMENT_CSV_COLUMNS = [
   "status",
   "createdAt",
   "cancelReason",
-];
+]);
 
 export function anchorRouter(
   service: AnchorService,
@@ -103,14 +117,12 @@ export function anchorRouter(
     service.get(req.params.id);
 
     if (!settlements) {
-      res
-        .status(501)
-        .json({
-          error: {
-            code: "NOT_IMPLEMENTED",
-            message: "settlements service unavailable",
-          },
-        });
+      res.status(501).json({
+        error: {
+          code: "NOT_IMPLEMENTED",
+          message: "settlements service unavailable",
+        },
+      });
       return;
     }
 

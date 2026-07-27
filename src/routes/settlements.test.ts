@@ -2,6 +2,17 @@ import request from "supertest";
 import { createApp } from "../app";
 import { Express } from "express";
 
+/**
+ * Returns the header row of a CSV payload as a list of column names.
+ *
+ * Kept deliberately simple: `toCsv` only quotes a field when it contains a
+ * comma, quote, or newline, and no column name does, so a plain split is
+ * exact for the header row.
+ */
+function parseHeaderRow(csv: string): string[] {
+  return csv.split("\n")[0].split(",");
+}
+
 async function setup(app: Express): Promise<void> {
   await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
   await request(app)
@@ -113,9 +124,7 @@ describe("settlement routes", () => {
       .post("/api/v1/settlements")
       .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
 
-    const matching = await request(app).get(
-      "/api/v1/settlements?asset=usdc",
-    );
+    const matching = await request(app).get("/api/v1/settlements?asset=usdc");
     expect(matching.status).toBe(200);
     expect(matching.body.settlements).toHaveLength(1);
 
@@ -139,16 +148,16 @@ describe("settlement routes", () => {
       "/api/v1/settlements?sort=amount&order=asc",
     );
     expect(asc.status).toBe(200);
-    expect(asc.body.settlements.map((s: { amount: number }) => s.amount)).toEqual(
-      [100, 300],
-    );
+    expect(
+      asc.body.settlements.map((s: { amount: number }) => s.amount),
+    ).toEqual([100, 300]);
 
     const desc = await request(app).get(
       "/api/v1/settlements?sort=amount&order=desc",
     );
-    expect(desc.body.settlements.map((s: { amount: number }) => s.amount)).toEqual(
-      [300, 100],
-    );
+    expect(
+      desc.body.settlements.map((s: { amount: number }) => s.amount),
+    ).toEqual([300, 100]);
   });
 
   it("sorts settlements by amount with 9 and 10 numerically", async () => {
@@ -168,9 +177,9 @@ describe("settlement routes", () => {
       "/api/v1/settlements?sort=amount&order=asc",
     );
     expect(asc.status).toBe(200);
-    expect(asc.body.settlements.map((s: { amount: number }) => s.amount)).toEqual(
-      [9, 10, 100],
-    );
+    expect(
+      asc.body.settlements.map((s: { amount: number }) => s.amount),
+    ).toEqual([9, 10, 100]);
   });
 
   it("sorts settlements by fee", async () => {
@@ -252,15 +261,103 @@ describe("settlement routes", () => {
   it("returns 400 for exotic invalid IDs (NaN, Infinity, -0, true, array, object, unsafe integer)", async () => {
     const app = createApp();
     await setup(app);
-    const badIds = [NaN, Infinity, -Infinity, -0, "NaN", "Infinity", "9007199254740992", "9007199254740993"];
+    const badIds = [
+      NaN,
+      Infinity,
+      -Infinity,
+      -0,
+      "NaN",
+      "Infinity",
+      "9007199254740992",
+      "9007199254740993",
+    ];
     for (const id of badIds) {
       const resGet = await request(app).get(`/api/v1/settlements/${id}`);
       expect(resGet.status).toBe(400);
       expect(resGet.body.error.code).toBe("BAD_REQUEST");
 
-      const resExec = await request(app).post(`/api/v1/settlements/${id}/execute`);
+      const resExec = await request(app).post(
+        `/api/v1/settlements/${id}/execute`,
+      );
       expect(resExec.status).toBe(400);
       expect(resExec.body.error.code).toBe("BAD_REQUEST");
+    }
+  });
+});
+
+describe("GET /api/v1/settlements?format=csv — column coverage", () => {
+  /** The exact header the settlement CSV export is contracted to emit, in order. */
+  const EXPECTED_SETTLEMENT_COLUMNS = [
+    "id",
+    "anchor",
+    "asset",
+    "amount",
+    "fee",
+    "status",
+    "createdAt",
+    "cancelReason",
+  ];
+
+  it("emits exactly the expected header columns, in order", async () => {
+    const app = createApp();
+    await setup(app);
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 400 });
+
+    const res = await request(app).get("/api/v1/settlements?format=csv");
+
+    expect(res.status).toBe(200);
+    expect(parseHeaderRow(res.text)).toEqual(EXPECTED_SETTLEMENT_COLUMNS);
+  });
+
+  it("emits the header even when no settlements exist", async () => {
+    const res = await request(createApp()).get(
+      "/api/v1/settlements?format=csv",
+    );
+
+    expect(res.status).toBe(200);
+    expect(parseHeaderRow(res.text)).toEqual(EXPECTED_SETTLEMENT_COLUMNS);
+  });
+
+  // The drift guard: compares the header against the keys of a real serialized
+  // settlement instead of a second hardcoded list, so a new `Settlement` field
+  // surfaced by the API fails here even if the list above is not updated.
+  // A cancelled settlement is used because `cancelReason` is optional and only
+  // present once a reason has been recorded.
+  it("covers every field of the JSON settlement representation", async () => {
+    const app = createApp();
+    await setup(app);
+    const opened = await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 400 });
+    const cancelled = await request(app)
+      .post(`/api/v1/settlements/${opened.body.id}/cancel`)
+      .send({ reason: "operator requested" });
+
+    const res = await request(app).get("/api/v1/settlements?format=csv");
+
+    expect(parseHeaderRow(res.text).sort()).toEqual(
+      Object.keys(cancelled.body).sort(),
+    );
+  });
+
+  it("emits one value cell per header column for each data row", async () => {
+    const app = createApp();
+    await setup(app);
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+    await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 200 });
+
+    const res = await request(app).get("/api/v1/settlements?format=csv");
+    const [header, ...rows] = res.text.trimEnd().split("\n");
+
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(row.split(",")).toHaveLength(header.split(",").length);
     }
   });
 });
