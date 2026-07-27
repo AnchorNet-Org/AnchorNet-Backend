@@ -30,6 +30,13 @@ export function liquidityRouter(service: LiquidityService): Router {
     res.json({ entries: service.listEntries() });
   });
 
+  // Read-only audit trail of successful withdrawals (amount, resulting balance,
+  // timestamp). Registered before the catch-all GET /:asset so it is never
+  // shadowed by a single-segment asset lookup.
+  router.get("/withdrawals", (_req: Request, res: Response) => {
+    res.json({ withdrawals: service.listWithdrawals() });
+  });
+
   // Force-remove an anchor's entire liquidity entry for an asset.
   router.delete("/:anchor/:asset", (req: Request, res: Response) => {
     res.json(service.removeEntry(req.params.anchor, req.params.asset));
