@@ -2,18 +2,17 @@ Changelog
 All notable changes to the AnchorNet API are documented here.
 
 [Unreleased]
-Changed
-CSV exports: the CSV_COLUMNS constants in routes/anchors.ts and
-routes/settlements.ts are now derived from keyof Anchor / keyof Settlement via a new csvColumnsFor type-level helper in utils/csv.ts.
-A model field with no matching column (or a column naming a field that does
-not exist) is now a compile error naming the offending field, instead of a
-silently truncated export.
 Added
-Tests: header-row coverage tests for GET /api/v1/anchors?format=csv,
-GET /api/v1/settlements?format=csv, and the nested
-GET /api/v1/anchors/:id/settlements?format=csv, asserting the exact column
-list and order, cross-checking the header against the keys of a real API
-response, and pinning the nested settlement export to the top-level one.
+Metrics: GET /api/v1/metrics now reports totalSettledAmount (sum of
+settlement amount) and totalFeesCollected (sum of settlement fee),
+computed from executed settlements only — pending settlements have
+merely reserved liquidity and may still be cancelled, and cancelled ones
+never moved value, so neither contributes. Operators can now read total
+value settled and total protocol fees earned without fetching every
+settlement and summing client-side. The fields are purely additive: the
+existing anchors, activeAnchors, pools, totalLiquidity,
+settlements and pendingSettlements fields are unchanged, and the same
+totals appear in GET /api/v1/metrics/history snapshots.
 [0.9.0]
 Added
 Operations: GET /api/v1/audit — the most recent mutating requests

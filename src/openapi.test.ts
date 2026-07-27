@@ -36,6 +36,21 @@ describe("openapi spec", () => {
     ).toBeDefined();
   });
 
+  it("documents the settled-value totals on GET /api/v1/metrics", () => {
+    const spec = buildOpenApiSpec() as {
+      paths: Record<string, { get: { description?: string } }>;
+    };
+
+    const metrics = spec.paths["/api/v1/metrics"].get;
+    expect(metrics.description).toContain("totalSettledAmount");
+    expect(metrics.description).toContain("totalFeesCollected");
+    expect(metrics.description).toContain("executed settlements only");
+
+    const history = spec.paths["/api/v1/metrics/history"].get;
+    expect(history.description).toContain("totalSettledAmount");
+    expect(history.description).toContain("totalFeesCollected");
+  });
+
   it("documents the dryRun preflight parameter on POST /api/v1/anchors/bulk", () => {
     const spec = buildOpenApiSpec() as {
       paths: Record<

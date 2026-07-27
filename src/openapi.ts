@@ -173,15 +173,24 @@ export function buildOpenApiSpec(): Record<string, unknown> {
         },
       },
       "/api/v1/metrics": {
-        get: { summary: "Aggregate network metrics" },
+        get: {
+          summary: "Aggregate network metrics",
+          description:
+            "Returns anchors, activeAnchors, pools, totalLiquidity, settlements and " +
+            "pendingSettlements, plus totalSettledAmount (sum of settlement amount) and " +
+            "totalFeesCollected (sum of settlement fee). Both value totals are computed " +
+            "from executed settlements only — pending settlements have merely reserved " +
+            "liquidity and cancelled ones never moved value, so neither contributes. " +
+            "Each read also appends a timestamped snapshot to the rolling history.",
+        },
       },
       "/api/v1/metrics/history": {
         get: {
           summary: "Recent aggregate metrics snapshots, oldest first",
           description:
-            "Returns the buffered metrics history. Pass ?since=<ISO-8601 timestamp> " +
-            "to return only snapshots with timestamp values strictly after that point.",
-          parameters: ["since"],
+            "Returns { snapshots: [...] }, where each snapshot carries the same fields as " +
+            "GET /api/v1/metrics (including totalSettledAmount and totalFeesCollected) " +
+            "plus an ISO-8601 timestamp.",
         },
       },
     },
