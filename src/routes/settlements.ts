@@ -4,12 +4,17 @@
 
 import { Router, Request, Response } from "express";
 import { SettlementService } from "../services/settlementService";
+import { Settlement } from "../models/settlement";
 import { paginate } from "../utils/pagination";
 import { applySort } from "../utils/sorting";
-import { toCsv } from "../utils/csv";
+import { csvColumnsFor, toCsv } from "../utils/csv";
 
 const SORTABLE_FIELDS = ["id", "amount", "fee", "status", "createdAt"];
-const CSV_COLUMNS = [
+
+// Locked to `Settlement` at compile time: a field added to the model without a
+// matching column here fails the build rather than silently disappearing from
+// the export. See `csvColumnsFor` in ../utils/csv.
+const CSV_COLUMNS = csvColumnsFor<Settlement>()([
   "id",
   "anchor",
   "asset",
@@ -18,7 +23,7 @@ const CSV_COLUMNS = [
   "status",
   "createdAt",
   "cancelReason",
-];
+]);
 
 export function settlementRouter(service: SettlementService): Router {
   const router = Router();
@@ -53,7 +58,10 @@ export function settlementRouter(service: SettlementService): Router {
       page: req.query.page,
       pageSize: req.query.pageSize,
     });
-    res.json({ settlements: page.items, pagination: { ...page, items: undefined } });
+    res.json({
+      settlements: page.items,
+      pagination: { ...page, items: undefined },
+    });
   });
 
   // Read a single settlement.
