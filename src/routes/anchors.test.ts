@@ -1,6 +1,17 @@
 import request from "supertest";
 import { createApp } from "../app";
 
+/**
+ * Returns the header row of a CSV payload as a list of column names.
+ *
+ * Kept deliberately simple: `toCsv` only quotes a field when it contains a
+ * comma, quote, or newline, and no column name does, so a plain split is
+ * exact for the header row.
+ */
+function parseHeaderRow(csv: string): string[] {
+  return csv.split("\n")[0].split(",");
+}
+
 describe("anchor routes", () => {
   it("registers an anchor", async () => {
     const app = createApp();
@@ -286,6 +297,59 @@ describe("anchor routes", () => {
   });
 });
 
+describe("GET /api/v1/anchors?format=csv — column coverage", () => {
+  /** The exact header the anchor CSV export is contracted to emit, in order. */
+  const EXPECTED_ANCHOR_COLUMNS = ["id", "name", "registeredAt", "active"];
+
+  it("emits exactly the expected header columns, in order", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+
+    const res = await request(app).get("/api/v1/anchors?format=csv");
+
+    expect(res.status).toBe(200);
+    expect(parseHeaderRow(res.text)).toEqual(EXPECTED_ANCHOR_COLUMNS);
+  });
+
+  it("emits the header even when no anchors are registered", async () => {
+    const res = await request(createApp()).get("/api/v1/anchors?format=csv");
+
+    expect(res.status).toBe(200);
+    expect(parseHeaderRow(res.text)).toEqual(EXPECTED_ANCHOR_COLUMNS);
+  });
+
+  // The drift guard: the header is compared against the keys of a real
+  // serialized anchor rather than a second hardcoded list, so a field added to
+  // `Anchor` (and returned by the API) fails here even if nobody remembers to
+  // update EXPECTED_ANCHOR_COLUMNS above.
+  it("covers every field of the JSON anchor representation", async () => {
+    const app = createApp();
+    const registered = await request(app)
+      .post("/api/v1/anchors")
+      .send({ id: "anchorA", name: "Anchor A" });
+
+    const res = await request(app).get("/api/v1/anchors?format=csv");
+
+    expect(parseHeaderRow(res.text).sort()).toEqual(
+      Object.keys(registered.body).sort(),
+    );
+  });
+
+  it("emits one value cell per header column for each data row", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
+    await request(app).post("/api/v1/anchors").send({ id: "anchorB" });
+
+    const res = await request(app).get("/api/v1/anchors?format=csv");
+    const [header, ...rows] = res.text.trimEnd().split("\n");
+
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(row.split(",")).toHaveLength(header.split(",").length);
+    }
+  });
+});
+
 describe("GET /api/v1/anchors/:id/settlements", () => {
   async function setupAnchorWithSettlements(app: ReturnType<typeof createApp>) {
     await request(app).post("/api/v1/anchors").send({ id: "anchorA" });
@@ -477,6 +541,41 @@ describe("GET /api/v1/anchors/:id/settlements", () => {
       /^id,anchor,asset,amount,fee,status,createdAt,cancelReason\n/,
     );
     expect(res.text).toContain("anchorA");
+  });
+
+  it("emits exactly the expected settlement CSV columns, in order", async () => {
+    const app = createApp();
+    await setupAnchorWithSettlements(app);
+
+    const res = await request(app).get(
+      "/api/v1/anchors/anchorA/settlements?format=csv",
+    );
+
+    expect(res.status).toBe(200);
+    expect(parseHeaderRow(res.text)).toEqual([
+      "id",
+      "anchor",
+      "asset",
+      "amount",
+      "fee",
+      "status",
+      "createdAt",
+      "cancelReason",
+    ]);
+  });
+
+  // The nested export and the top-level /api/v1/settlements export are driven
+  // by two separate constants; this pins them together so they cannot diverge.
+  it("emits the same columns as the top-level settlements export", async () => {
+    const app = createApp();
+    await setupAnchorWithSettlements(app);
+
+    const nested = await request(app).get(
+      "/api/v1/anchors/anchorA/settlements?format=csv",
+    );
+    const topLevel = await request(app).get("/api/v1/settlements?format=csv");
+
+    expect(parseHeaderRow(nested.text)).toEqual(parseHeaderRow(topLevel.text));
   });
 });
 

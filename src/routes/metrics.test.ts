@@ -103,6 +103,68 @@ describe("metrics route", () => {
     expect(typeof res.body.snapshots[0].timestamp).toBe("string");
   });
 
+  it("returns the full metrics history when since is omitted", async () => {
+    const app = createApp();
+    await seed(app);
+
+    await request(app).get("/api/v1/metrics");
+    await request(app).get("/api/v1/metrics");
+    await request(app).get("/api/v1/metrics");
+
+    const res = await request(app).get("/api/v1/metrics/history");
+    expect(res.status).toBe(200);
+    expect(res.body.snapshots).toHaveLength(3);
+  });
+
+  it("filters metrics history to snapshots after a valid since timestamp", async () => {
+    jest.useFakeTimers();
+    try {
+      const app = createApp();
+      await seed(app);
+
+      jest.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+      await request(app).get("/api/v1/metrics");
+
+      jest.setSystemTime(new Date("2026-01-01T00:00:10.000Z"));
+      await request(app).get("/api/v1/metrics");
+
+      jest.setSystemTime(new Date("2026-01-01T00:00:20.000Z"));
+      await request(app).get("/api/v1/metrics");
+
+      const res = await request(app)
+        .get("/api/v1/metrics/history")
+        .query({ since: "2026-01-01T00:00:10.000Z" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.snapshots).toHaveLength(1);
+      expect(res.body.snapshots[0].timestamp).toBe("2026-01-01T00:00:20.000Z");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("rejects an invalid since timestamp", async () => {
+    const res = await request(createApp())
+      .get("/api/v1/metrics/history")
+      .query({ since: "not-a-date" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toBe(
+      '"since" must be a valid ISO-8601 timestamp',
+    );
+  });
+
+  it("rejects repeated since timestamp query parameters", async () => {
+    const res = await request(createApp()).get(
+      "/api/v1/metrics/history?since=2026-01-01T00:00:00.000Z&since=2026-01-02T00:00:00.000Z",
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toBe(
+      '"since" must be a valid ISO-8601 timestamp',
+    );
+  });
+
   it("records snapshots on a fixed interval when configured", async () => {
     jest.useFakeTimers();
     try {

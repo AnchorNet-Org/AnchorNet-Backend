@@ -48,3 +48,53 @@ Never use peekNextId() to reserve an id across an await.
 The synchronous-only contract is locked in by a test in
 src/repositories/settlementRepository.test.ts (preview … immediate create). That test must remain green; treat its failure as a signal that a
 non-atomic change to id allocation has been introduced.
+
+CSV Export Column Coverage
+Two list endpoints can serialize their results as CSV instead of JSON:
+
+GET /api/v1/anchors?format=csv (columns derived from Anchor)
+GET /api/v1/settlements?format=csv and the nested
+GET /api/v1/anchors/:id/settlements?format=csv (columns derived from Settlement)
+
+Each route module declares a CSV_COLUMNS constant that serves as both the
+header row and the field order passed to toCsv() (src/utils/csv.ts).
+
+Silent-Drift Risk (read before adding a field to Anchor or Settlement)
+Because toCsv() renders any column it is given and ignores any model field it
+is not given, a plain string[] of column names can fall out of sync with its
+model without anything failing: a newly added field simply never reaches the
+export, and consumers downloading the CSV silently lose data. This is the same
+class of problem as OpenAPI spec drift, applied to export columns.
+
+Two independent guardrails lock this down; both must stay in place.
+
+Compile-time (structural). CSV_COLUMNS is built via
+csvColumnsFor<Anchor>() / csvColumnsFor<Settlement>() rather than declared as
+a bare array. The helper constrains the tuple to (keyof T & string)[] and
+additionally requires it to be exhaustive, so both drift directions are build
+failures rather than runtime surprises:
+a column naming a field that no longer exists on the model (typo, renamed or
+removed field) is rejected by the keyof constraint;
+a field added to the model that no column covers is rejected by the
+exhaustiveness check, and the compiler error names the uncovered field via
+the CSV_COLUMNS_IS_MISSING_MODEL_FIELDS property.
+
+Optional model fields (e.g. cancelReason?) are treated exactly like required
+ones — omitting them drops data from the export just the same.
+
+The helper returns the tuple unchanged at runtime; it is a pure type-level
+guard with no behavioural effect on the response.
+
+Runtime (contract). Tests in src/routes/anchors.test.ts and
+src/routes/settlements.test.ts parse the header row of the actual CSV
+response and assert the exact column list and order. Each file also asserts
+the header against the keys of a real serialized API object rather than a
+second hardcoded list, so a model field that reaches the JSON response but not
+the CSV export fails the suite even if the expected-column list was not
+updated. A further test pins the nested anchor-scoped settlement export to the
+top-level settlement export so the two column constants cannot diverge.
+⚠️ When adding a field to Anchor or Settlement, add it to the corresponding
+CSV_COLUMNS (and, for settlements, to both the settlements route and the
+nested anchors route) and to the expected-column lists in the tests. Treat a
+failure in either guardrail as a real export regression, not as a test to
+loosen.

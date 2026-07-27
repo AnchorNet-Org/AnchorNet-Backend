@@ -6,6 +6,7 @@ import { Router, Request, Response } from "express";
 import { LiquidityService } from "../services/liquidityService";
 import { AnchorService } from "../services/anchorService";
 import { SettlementService } from "../services/settlementService";
+import { ApiError } from "../errors/ApiError";
 import { BoundedHistory } from "../utils/history";
 
 /** Maximum number of metrics snapshots retained for `GET /history`. */
@@ -105,8 +106,31 @@ export function metricsRouter(deps: {
   });
 
   // The last (up to) `MAX_HISTORY` metrics snapshots, oldest first.
-  router.get("/history", (_req: Request, res: Response) => {
-    res.json({ snapshots: history.all() });
+  // When ?since=<ISO-8601 timestamp> is provided, only snapshots with a
+  // timestamp strictly after that point are returned.
+  router.get("/history", (req: Request, res: Response) => {
+    const since = req.query.since;
+    const snapshots = history.all();
+
+    if (since === undefined) {
+      res.json({ snapshots });
+      return;
+    }
+
+    if (typeof since !== "string") {
+      throw ApiError.badRequest('"since" must be a valid ISO-8601 timestamp');
+    }
+
+    const sinceTime = new Date(since).getTime();
+    if (Number.isNaN(sinceTime)) {
+      throw ApiError.badRequest('"since" must be a valid ISO-8601 timestamp');
+    }
+
+    res.json({
+      snapshots: snapshots.filter(
+        (snapshot) => new Date(snapshot.timestamp).getTime() > sinceTime,
+      ),
+    });
   });
 
   return router;
