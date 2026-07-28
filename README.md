@@ -59,6 +59,13 @@ from and to are the same anchor.
 GET /api/v1/liquidity – list aggregated pools { pools: [{ asset, total, anchors }] }
 GET /api/v1/liquidity/entries – list raw per-anchor entries
 GET /api/v1/liquidity/:asset – aggregated pool for one asset (404 if none)
+Route ordering (liquidity): GET /:asset is a catch-all that matches any
+single path segment, so every static single-segment liquidity GET
+(/entries, /withdrawals) and /anchors/:anchor must stay registered before
+it in src/routes/liquidity.ts. Express matches routes in registration
+order; swapping them would silently make GET /api/v1/liquidity/entries
+resolve as getPool("ENTRIES"). Regression tests in
+src/routes/liquidity.test.ts pin this ordering.
 DELETE /api/v1/liquidity/:anchor/:asset – administratively remove an
 anchor's entire entry (404 if none). This bypasses reserved-liquidity
 accounting checks, so operators should first confirm that no pending

@@ -218,6 +218,61 @@ describe("liquidity routes", () => {
     expect(res.body.total).toBe(500);
   });
 
+  it("the /entries static route takes precedence over /:asset", async () => {
+    const app = createApp();
+    // With no liquidity recorded, a /:asset lookup for "ENTRIES" would 404.
+    // Because the static /entries route is registered before the catch-all
+    // /:asset, GET /entries must resolve to the entries handler and return
+    // 200 with an entries array — not be swallowed by the asset lookup.
+    const res = await request(app).get("/api/v1/liquidity/entries");
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.entries)).toBe(true);
+    expect(res.body).toEqual({ entries: [] });
+    // Guard against the pool shape returned by getPool("ENTRIES").
+    expect(res.body).not.toHaveProperty("asset");
+    expect(res.body).not.toHaveProperty("total");
+    expect(res.body).not.toHaveProperty("error");
+  });
+
+  it("keeps /entries resolving to the entries list even with liquidity recorded", async () => {
+    const app = createApp();
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 500 });
+
+    const res = await request(app).get("/api/v1/liquidity/entries");
+
+    expect(res.status).toBe(200);
+    expect(res.body.entries).toHaveLength(1);
+    expect(res.body.entries[0]).toMatchObject({
+      anchor: "anchorA",
+      asset: "USDC",
+      amount: 500,
+    });
+    expect(res.body).not.toHaveProperty("total");
+  });
+
+  it("still resolves /entries to the entries list when an asset named ENTRIES exists", async () => {
+    const app = createApp();
+    // Worst case for a swapped registration order: an asset literally named
+    // "ENTRIES" exists, so /:asset would return a 200 pool-shaped body and the
+    // shadowing bug would be invisible to a status-code-only assertion.
+    await request(app)
+      .post("/api/v1/liquidity")
+      .send({ anchor: "anchorA", asset: "ENTRIES", amount: 42 });
+
+    const res = await request(app).get("/api/v1/liquidity/entries");
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.entries)).toBe(true);
+    expect(res.body.entries).toHaveLength(1);
+    // Pool shape ({ asset, total, anchors, lastUpdated }) must NOT be returned.
+    expect(res.body).not.toHaveProperty("total");
+    expect(res.body).not.toHaveProperty("anchors");
+    expect(res.body.entries[0]).toMatchObject({ asset: "ENTRIES", amount: 42 });
+  });
+
   it("starts with an empty withdrawal history", async () => {
     const res = await request(createApp()).get("/api/v1/liquidity/withdrawals");
 
