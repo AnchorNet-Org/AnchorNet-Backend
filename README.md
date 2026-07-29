@@ -139,12 +139,21 @@ PAYLOAD_TOO_LARGE). Every response carries an x-request-id header for
 tracing, plus a small set of defensive security headers (X-Content-Type-Options,
 X-Frame-Options, X-XSS-Protection, Referrer-Policy, X-DNS-Prefetch-Control).
 
-Mutating requests (POST/PUT/PATCH/DELETE) are rate-limited per client
-(default 30 requests/minute, in-memory). When API_KEY authentication is
-configured, the presented key identifies the client; open deployments continue
-to use the client IP. Requests over the limit receive 429 with code
-RATE_LIMITED. POST /api/v1/quote has an additional, stricter limit (10
-requests/minute) on top of the general one.
+Mutating requests (POST/PUT/PATCH/DELETE) are rate-limited per client.
+The global limiter is mounted in `src/app.ts` for all mutating routes except
+`/api/v1/quote`, using `DEFAULT_MAX = 30` and `DEFAULT_WINDOW_MS = 60_000`
+from `src/middleware/rateLimiter.ts` unless overridden by configuration. When
+`API_KEY` authentication is configured, the presented key identifies the
+client; open deployments continue to use the client IP.
+
+`POST /api/v1/quote` is excluded from the global limiter via `skipPaths` and
+then receives its own stricter `rateLimiter({ max: 10, windowMs: 60_000 })`
+instance in `src/app.ts`. That quote limiter has separate in-memory counters
+from the global mutating-request limiter.
+
+Requests over either limit receive `429` with code `RATE_LIMITED` and the
+message `rate limit exceeded, try again later`. Clients should treat this as a
+retryable response and back off before sending the next mutating request.
 
 Mutating requests may also send an Idempotency-Key header. The first request
 for a given key/method/path combination runs normally and its response is cached; any
