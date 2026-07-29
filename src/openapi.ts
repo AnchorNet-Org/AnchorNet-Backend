@@ -179,6 +179,18 @@ export function buildOpenApiSpec(): Record<string, unknown> {
           summary: "Cancel a pending settlement and release its liquidity",
         },
       },
+      "/api/v1/settlements/{id}/audit": {
+        get: {
+          summary:
+            "Audit entries whose path references this settlement id",
+          description:
+            "Returns audit entries (method, path, status, request id, timestamp) whose path " +
+            "contains the given settlement id. Reuses the in-memory audit store from the " +
+            "global GET /api/v1/audit, filtered locally. Returns 404 if the settlement id " +
+            "does not exist, and an empty array if it exists but has no matching entries " +
+            "(e.g. entries aged out of the ring buffer).",
+        },
+      },
       "/api/v1/metrics": {
         get: {
           summary: "Aggregate network metrics",

@@ -5,6 +5,7 @@
 import { Router, Request, Response } from "express";
 import { SettlementService } from "../services/settlementService";
 import { Settlement } from "../models/settlement";
+import { AuditEntry } from "../middleware/auditLog";
 import { paginate } from "../utils/pagination";
 import { applySort } from "../utils/sorting";
 import { csvColumnsFor, toCsv } from "../utils/csv";
@@ -25,7 +26,10 @@ const CSV_COLUMNS = csvColumnsFor<Settlement>()([
   "cancelReason",
 ]);
 
-export function settlementRouter(service: SettlementService): Router {
+export function settlementRouter(
+  service: SettlementService,
+  auditEntries?: () => AuditEntry[],
+): Router {
   const router = Router();
 
   // Open a new settlement, reserving liquidity.
@@ -77,6 +81,21 @@ export function settlementRouter(service: SettlementService): Router {
   // Cancel a pending settlement, optionally recording a { reason }.
   router.post("/:id/cancel", (req: Request, res: Response) => {
     res.json(service.cancel(req.params.id, (req.body ?? {}).reason));
+  });
+
+  // Return audit entries whose path references this settlement id.
+  // Reuses the existing in-memory audit store — no new storage needed.
+  // Returns 404 if the settlement id doesn't exist; empty array if no
+  // entries match (e.g. entries aged out of the ring buffer).
+  router.get("/:id/audit", (req: Request, res: Response) => {
+    // Validate the settlement exists (throws 400/404 on failure).
+    service.get(req.params.id);
+    const id = req.params.id;
+    const pattern = new RegExp(`^/api/v1/settlements/${id}(/|$)`);
+    const filtered = (auditEntries?.() ?? []).filter((e) =>
+      pattern.test(e.path),
+    );
+    res.json({ entries: filtered });
   });
 
   return router;

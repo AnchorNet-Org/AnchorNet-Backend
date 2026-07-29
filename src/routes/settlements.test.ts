@@ -285,6 +285,56 @@ describe("settlement routes", () => {
   });
 });
 
+describe("GET /api/v1/settlements/:id/audit", () => {
+  it("returns audit entries whose path references the settlement id", async () => {
+    const app = createApp();
+    await setup(app);
+    const open = await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+    const id = open.body.id;
+
+    await request(app).post(`/api/v1/settlements/${id}/execute`);
+
+    const res = await request(app).get(`/api/v1/settlements/${id}/audit`);
+    expect(res.status).toBe(200);
+    expect(res.body.entries).toBeInstanceOf(Array);
+    for (const entry of res.body.entries) {
+      expect(entry.path).toMatch(
+        new RegExp(`^/api/v1/settlements/${id}(/|$)`),
+      );
+    }
+  });
+
+  it("returns an empty array when the settlement exists but has no matching audit entries", async () => {
+    const app = createApp();
+    await setup(app);
+    const open = await request(app)
+      .post("/api/v1/settlements")
+      .send({ anchor: "anchorA", asset: "USDC", amount: 100 });
+    const id = open.body.id;
+
+    const res = await request(app).get(`/api/v1/settlements/${id}/audit`);
+    expect(res.status).toBe(200);
+    expect(res.body.entries).toEqual([]);
+  });
+
+  it("returns 404 for an unknown settlement id", async () => {
+    const app = createApp();
+    await setup(app);
+    const res = await request(app).get("/api/v1/settlements/99999/audit");
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("returns 400 for an invalid settlement id", async () => {
+    const app = createApp();
+    const res = await request(app).get("/api/v1/settlements/NaN/audit");
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("BAD_REQUEST");
+  });
+});
+
 describe("GET /api/v1/settlements?format=csv — column coverage", () => {
   /** The exact header the settlement CSV export is contracted to emit, in order. */
   const EXPECTED_SETTLEMENT_COLUMNS = [
