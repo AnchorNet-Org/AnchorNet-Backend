@@ -58,4 +58,39 @@ describe("createShutdownHandler", () => {
     expect(exit).toHaveBeenCalledWith(1);
     jest.useRealTimers();
   });
+
+  it("clears the forceExit timer even if the shutdown callback throws", () => {
+    jest.useFakeTimers();
+    // Simulate server.close callback that throws
+    const server = {
+      close: (cb: CloseCallback) => {
+        cb(); // Callback executes
+      }
+    };
+    
+    // We want exit to throw, interrupting the callback flow.
+    const exit = jest.fn(() => {
+        throw new Error("exit failed");
+    });
+    
+    // Create handler. Timeout is 100ms.
+    const handler = createShutdownHandler(server, { exit, timeoutMs: 100 });
+
+    // This should trigger server.close callback -> exit -> throws
+    expect(() => handler("SIGTERM")).toThrow("exit failed");
+
+    // Advance time. Since the error was caught and finally was run,
+    // the forceExit timer should have been cleared.
+    jest.advanceTimersByTime(100);
+
+    // exit should have been called EXACTLY once (the one that threw)
+    expect(exit).toHaveBeenCalledTimes(1);
+    
+    // If it WASN'T cleared, forceExit would have fired exit(1) again
+    // after the timers advanced, making total calls = 2.
+    // So verifying it is 1 means it was cleared.
+    expect(exit).toHaveBeenCalledTimes(1);
+    
+    jest.useRealTimers();
+  });
 });
