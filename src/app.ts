@@ -115,7 +115,7 @@ export function createApp(): Express {
   );
   app.use("/api/v1/quote", quoteRouter(quotes));
   app.use("/api/v1/anchors", anchorRouter(anchors, settlements));
-  app.use("/api/v1/settlements", settlementRouter(settlements));
+  app.use("/api/v1/settlements", settlementRouter(settlements, audit.entries));
   app.use(
     "/api/v1/metrics",
     metricsRouter({

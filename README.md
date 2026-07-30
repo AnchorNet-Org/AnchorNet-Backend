@@ -119,6 +119,10 @@ GET /api/v1/settlements/:id – read one settlement
 POST /api/v1/settlements/:id/execute – execute a pending settlement
 POST /api/v1/settlements/:id/cancel – cancel and release reserved
 liquidity; accepts an optional { reason } recorded on the settlement
+GET /api/v1/settlements/:id/audit – audit entries whose path references
+this settlement id (method, path, status, request id, timestamp); returns
+404 if the settlement id is unknown, empty array if it has no matching
+entries (e.g. aged out of the ring buffer)
 Metrics
 GET /api/v1/metrics – aggregate counts (anchors, activeAnchors, pools,
 totalLiquidity, settlements, pendingSettlements) plus settled-value totals:
