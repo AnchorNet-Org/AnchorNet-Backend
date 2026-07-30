@@ -49,8 +49,11 @@ export function createShutdownHandler(
     forceExit.unref?.();
 
     server.close((err?: Error) => {
-      clearTimeout(forceExit);
-      exit(err ? 1 : 0);
+      try {
+        exit(err ? 1 : 0);
+      } finally {
+        clearTimeout(forceExit);
+      }
     });
   };
 }
