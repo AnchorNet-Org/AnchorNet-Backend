@@ -59,7 +59,10 @@ export function buildOpenApiSpec(): Record<string, unknown> {
         get: {
           summary: "List aggregated liquidity pools",
           description:
-            "Returns an array of Pool objects, each containing asset, total, anchors count, and a lastUpdated timestamp.",
+            "Returns { pools: [...], pagination: { pageSize, nextCursor } }. " +
+            "Cursor mode is the default, ordered by asset ascending; pageSize defaults to 20 and is clamped to 100. " +
+            "Pass the opaque nextCursor to continue. Legacy page-based pagination remains available when page is supplied.",
+          parameters: ["cursor", "pageSize", "page"],
         },
       },
       "/api/v1/liquidity/withdraw": {
@@ -82,7 +85,9 @@ export function buildOpenApiSpec(): Record<string, unknown> {
             "Returns { entries: [...] }. This static path is registered before the " +
             "catch-all GET /api/v1/liquidity/{asset}; that ordering is load-bearing, " +
             "since reversing it would make this path resolve as a pool lookup for an " +
-            'asset named "ENTRIES".',
+            'asset named "ENTRIES". Cursor mode is ordered by anchor and asset and ' +
+            "adds pagination.pageSize and pagination.nextCursor.",
+          parameters: ["cursor", "pageSize"],
         },
       },
 
@@ -93,11 +98,17 @@ export function buildOpenApiSpec(): Record<string, unknown> {
             "Read-only audit trail of withdrawals recorded by POST /api/v1/liquidity/withdraw. " +
             "Each entry records the anchor, asset, amount withdrawn, the anchor's resulting " +
             "balance, and an ISO-8601 timestamp, and persists even after an entry is removed " +
-            "once its balance reaches zero. Bounded to the most recent records.",
+            "once its balance reaches zero. Bounded to the most recent records. Cursor mode " +
+            "is ordered oldest-first by timestamp with an insertion-index tie-breaker.",
+          parameters: ["cursor", "pageSize"],
         },
       },
       "/api/v1/liquidity/anchors/{anchor}": {
-        get: { summary: "List raw liquidity entries for a single anchor" },
+        get: {
+          summary: "List raw liquidity entries for a single anchor",
+          description: "Returns { entries: [...], pagination: { pageSize, nextCursor } }, ordered by asset ascending.",
+          parameters: ["cursor", "pageSize"],
+        },
       },
       "/api/v1/liquidity/{asset}": {
         get: {
@@ -127,7 +138,8 @@ export function buildOpenApiSpec(): Record<string, unknown> {
         post: { summary: "Register an anchor" },
         get: {
           summary: "List anchors",
-          parameters: ["status", "q", "sort", "order", "format"],
+          description: "Cursor mode is the default and orders anchors by id ascending. The status and q filters are part of the cursor scope.",
+          parameters: ["status", "q", "sort", "order", "format", "cursor", "pageSize", "page"],
         },
       },
       "/api/v1/anchors/{id}": {
@@ -165,7 +177,7 @@ export function buildOpenApiSpec(): Record<string, unknown> {
           description:
             "Returns the same paginated settlement list as GET /api/v1/settlements?anchor={id}, " +
             "but scoped to the anchor identified by :id. Returns 404 if the anchor does not exist.",
-          parameters: ["sort", "order", "page", "pageSize", "format"],
+          parameters: ["sort", "order", "page", "pageSize", "format", "cursor"],
         },
       },
       "/api/v1/settlements": {
@@ -180,7 +192,9 @@ export function buildOpenApiSpec(): Record<string, unknown> {
             "page",
             "pageSize",
             "format",
+            "cursor",
           ],
+          description: "Cursor mode is the default, ordered by settlement id descending. Filter values are part of the cursor scope; legacy page pagination remains available.",
         },
       },
       "/api/v1/settlements/{id}": {

@@ -228,7 +228,8 @@ describe("liquidity routes", () => {
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.entries)).toBe(true);
-    expect(res.body).toEqual({ entries: [] });
+    expect(res.body.entries).toEqual([]);
+    expect(res.body.pagination).toEqual({ pageSize: 20, nextCursor: null });
     expect(res.body).not.toHaveProperty("asset");
     expect(res.body).not.toHaveProperty("total");
     expect(res.body).not.toHaveProperty("error");

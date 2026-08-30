@@ -9,6 +9,8 @@ import { AuditEntry } from "../middleware/auditLog";
 import { paginate } from "../utils/pagination";
 import { applySort } from "../utils/sorting";
 import { csvColumnsFor, toCsv } from "../utils/csv";
+import { paginateByCursor } from "../utils/cursorPagination";
+import { ApiError } from "../errors/ApiError";
 
 const SORTABLE_FIELDS = ["id", "amount", "fee", "status", "createdAt"];
 
@@ -39,8 +41,8 @@ export function settlementRouter(
     res.status(201).json({ ...s, amount: Number(s.amount), fee: Number(s.fee) });
   });
 
-  // List settlements, optionally filtered by ?anchor= and ?asset=, sorted via
-  // ?sort= and ?order=, and paginated via ?page= and ?pageSize=.
+  // List settlements, optionally filtered by ?anchor= and ?asset=. The default
+  // is a bounded id-descending cursor page; ?page= keeps the legacy offset API.
   router.get("/", (req: Request, res: Response) => {
     const anchor =
       typeof req.query.anchor === "string" ? req.query.anchor : undefined;
@@ -56,6 +58,7 @@ export function settlementRouter(
     const sortOrder =
       typeof req.query.order === "string" ? req.query.order : "asc";
 
+    const hasCustomSort = req.query.sort !== undefined || req.query.order !== undefined;
     let sorted: typeof raw;
 
     // Use BigInt comparison for amount and fee to avoid lexicographic ordering
@@ -68,18 +71,41 @@ export function settlementRouter(
         const bv = BigInt(b[field]);
         return av < bv ? -dir : av > bv ? dir : 0;
       });
-    } else {
+    } else if (hasCustomSort) {
       sorted = applySort(
         raw,
         { sort: req.query.sort, order: req.query.order },
         SORTABLE_FIELDS,
       );
+    } else {
+      sorted = [...raw].sort((a, b) => b.id - a.id);
     }
 
     // CSV export ignores pagination and returns every matching, sorted row.
     if (req.query.format === "csv") {
       const stringifiedSorted = sorted.map(s => ({ ...s, amount: s.amount.toString(), fee: s.fee.toString() }));
       res.type("text/csv").send(toCsv(stringifiedSorted, CSV_COLUMNS));
+      return;
+    }
+
+    const useCursor = req.query.cursor !== undefined ||
+      (!hasCustomSort && req.query.page === undefined);
+    if (useCursor && hasCustomSort) {
+      throw ApiError.badRequest("cursor pagination requires the canonical settlement order (id desc)");
+    }
+
+    if (useCursor) {
+      const page = paginateByCursor(sorted, {
+        cursor: req.query.cursor,
+        pageSize: req.query.pageSize,
+        direction: "desc",
+        scope: `settlements:${anchor ?? "all"}:${asset ?? "all"}`,
+        keyOf: (settlement) => String(settlement.id).padStart(20, "0"),
+      });
+      res.json({
+        settlements: page.items.map(s => ({ ...s, amount: Number(s.amount), fee: Number(s.fee) })),
+        pagination: { pageSize: page.pageSize, nextCursor: page.nextCursor },
+      });
       return;
     }
 
