@@ -17,6 +17,23 @@ cd anchornet-backend
 Install dependencies
 npm install
 
+Production persistence
+
+Production requires PostgreSQL and a `DATABASE_URL`. Apply the checked-in
+migrations before starting the API:
+
+```sh
+DATABASE_URL=postgres://user:password@host:5432/anchornet npm run migrate:up
+DATABASE_URL=postgres://user:password@host:5432/anchornet npm start
+```
+
+The process checks the database and hydrates anchors, liquidity, and
+settlements before it binds its HTTP port. It exits instead of serving with an
+empty in-memory state when PostgreSQL is unavailable. Settlement reservations
+are checked and inserted in one transaction with row locks, so concurrent API
+instances cannot reserve the same liquidity twice. Development and Jest keep
+the existing in-memory repositories when `DATABASE_URL` is omitted.
+
 Run in development
 npm run dev
 Server runs at http://localhost:3001 by default. Set PORT to override.

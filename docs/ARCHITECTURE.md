@@ -16,10 +16,34 @@ Sensitive Data Redaction & Security Guarantees
 Strict Redaction via Denylist: Any header, body parameter, or metadata stored in audit log entries is processed through redactSensitiveData().
 Denylisted Fields: Secret-bearing keys such as x-api-key, authorization, cookie, set-cookie, token, access_token, refresh_token, secret, password, bearer, private_key, client_secret are matched case-insensitively and replaced with "[REDACTED]".
 Preventing Plaintext Exposure: Under no circumstances should raw credentials or API keys be captured or retained in plaintext in the in-memory audit ring buffer or exposed via GET /api/v1/audit.
-In-Memory Repositories & Future Persistence
-Settlement, anchor, and liquidity data are held in process-local in-memory
-repositories (src/repositories/*), all extending the shared
-InMemoryRepository base class.
+Durable PostgreSQL Persistence
+In production, `DATABASE_URL` is required. `src/index.ts` reaches PostgreSQL,
+loads all three aggregates, and only then constructs the HTTP app and binds a
+port. The persistent repository facades preserve the existing synchronous
+domain-service contract for reads while serializing accepted writes and
+flushing them before graceful shutdown. Development and Jest retain the
+in-memory repositories when no database URL is configured.
+
+The migration in `migrations/001_initial_persistence.js` defines anchors,
+liquidity entries, and settlements with foreign keys, numeric(78,0) amounts,
+status/amount constraints, and query indexes. Amounts cross the database
+boundary as strings and are converted to `bigint`; no financial value is
+converted through JavaScript `number`.
+
+Settlement opening is a dedicated database transaction. It locks every
+liquidity row for the requested asset in stable anchor order, locks the
+pending/executed settlement rows for that asset, calculates committed value,
+and inserts the new pending row before committing. This prevents two API
+instances from both observing the same remaining capacity. Execute/cancel
+also use conditional transactional updates so a pending settlement can only
+transition once.
+
+In-Memory Repositories & Test Double
+When `DATABASE_URL` is absent, settlement, anchor, and liquidity data are held
+in process-local repositories (src/repositories/*), all extending the shared
+InMemoryRepository base class. This keeps unit and HTTP tests deterministic
+without requiring a live database; production cannot use this fallback because
+configuration validation requires `DATABASE_URL` under `NODE_ENV=production`.
 
 Idempotency cache (src/middleware/idempotency.ts) follows the same sequencing:
 a process-wide `MemoryIdempotencyStore` (shared across mounts, hard-capped,

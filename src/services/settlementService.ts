@@ -32,12 +32,13 @@ export class SettlementService {
   private readonly consumed = new Map<string, bigint>();
 
   constructor(
-    private readonly settlements: SettlementRepository,
-    private readonly liquidity: LiquidityRepository,
-    private readonly anchors: AnchorService,
+    protected readonly settlements: SettlementRepository,
+    protected readonly liquidity: LiquidityRepository,
+    protected readonly anchors: AnchorService,
     feeBps: bigint | number = DEFAULT_FEE_BPS,
   ) {
     this.feeBps = BigInt(feeBps);
+    this.rebuildAccounting();
   }
 
   private readonly feeBps: bigint;
@@ -51,6 +52,29 @@ export class SettlementService {
   /** Returns the amount of liquidity reserved for pending settlements for a given asset. */
   public getReservedLiquidity(asset: string): bigint {
     return this.reserved.get(asset) ?? 0n;
+  }
+
+  /**
+   * Rebuilds derived accounting from durable settlement rows. The maps remain
+   * a fast read cache for the synchronous service contract, but they are no
+   * longer the source of truth after a process restart.
+   */
+  public rebuildAccounting(): void {
+    this.reserved.clear();
+    this.consumed.clear();
+    for (const settlement of this.settlements.all()) {
+      if (settlement.status === "pending") {
+        this.reserved.set(
+          settlement.asset,
+          (this.reserved.get(settlement.asset) ?? 0n) + settlement.amount,
+        );
+      } else if (settlement.status === "executed") {
+        this.consumed.set(
+          settlement.asset,
+          (this.consumed.get(settlement.asset) ?? 0n) + settlement.amount,
+        );
+      }
+    }
   }
 
   /** Opens a pending settlement, reserving liquidity from the pool. */

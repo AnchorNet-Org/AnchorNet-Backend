@@ -2,7 +2,7 @@
  * Routes for opening and managing settlements.
  */
 
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { SettlementService } from "../services/settlementService";
 import { Settlement } from "../models/settlement";
 import { AuditEntry } from "../middleware/auditLog";
@@ -36,9 +36,10 @@ export function settlementRouter(
 
   // Open a new settlement, reserving liquidity.
   // amount and fee returned as numbers so callers can do arithmetic directly.
-  router.post("/", (req: Request, res: Response) => {
-    const s = service.open(req.body ?? {});
-    res.status(201).json({ ...s, amount: Number(s.amount), fee: Number(s.fee) });
+  router.post("/", (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(service.open(req.body ?? {})).then((s) => {
+      res.status(201).json({ ...s, amount: Number(s.amount), fee: Number(s.fee) });
+    }).catch(next);
   });
 
   // List settlements, optionally filtered by ?anchor= and ?asset=. The default
@@ -128,15 +129,17 @@ export function settlementRouter(
   });
 
   // Execute a pending settlement.
-  router.post("/:id/execute", (req: Request, res: Response) => {
-    const s = service.execute(req.params.id);
-    res.json({ ...s, amount: s.amount.toString(), fee: s.fee.toString() });
+  router.post("/:id/execute", (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(service.execute(req.params.id)).then((s) => {
+      res.json({ ...s, amount: s.amount.toString(), fee: s.fee.toString() });
+    }).catch(next);
   });
 
   // Cancel a pending settlement, optionally recording a { reason }.
-  router.post("/:id/cancel", (req: Request, res: Response) => {
-    const s = service.cancel(req.params.id, (req.body ?? {}).reason);
-    res.json({ ...s, amount: s.amount.toString(), fee: s.fee.toString() });
+  router.post("/:id/cancel", (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(service.cancel(req.params.id, (req.body ?? {}).reason)).then((s) => {
+      res.json({ ...s, amount: s.amount.toString(), fee: s.fee.toString() });
+    }).catch(next);
   });
 
   // Return audit entries whose path references this settlement id.

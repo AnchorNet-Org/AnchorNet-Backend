@@ -2,7 +2,7 @@
  * Routes for managing registered anchors.
  */
 
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { AnchorService } from "../services/anchorService";
 import { SettlementService } from "../services/settlementService";
 import { Anchor } from "../models/anchor";
@@ -60,9 +60,10 @@ export function anchorRouter(
   const router = Router();
 
   // Register a new anchor.
-  router.post("/", (req: Request, res: Response) => {
-    const anchor = service.register(req.body ?? {});
-    res.status(201).json(anchor);
+  router.post("/", (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve().then(() => service.register(req.body ?? {}))
+      .then(async (anchor) => { await service.flush(); res.status(201).json(anchor); })
+      .catch(next);
   });
 
   // Register a batch of anchors atomically.
@@ -73,10 +74,13 @@ export function anchorRouter(
   // confirm no registration happened. `dryRun` is strictly parsed: only
   // "true"/"false" are accepted, so a typo can never silently perform a real
   // registration.
-  router.post("/bulk", (req: Request, res: Response) => {
-    const dryRun = optionalBooleanFlag(req.query.dryRun, "dryRun");
-    const anchors = service.registerBulk((req.body ?? {}).anchors, dryRun);
-    res.status(201).json({ anchors, dryRun });
+  router.post("/bulk", (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve().then(async () => {
+      const dryRun = optionalBooleanFlag(req.query.dryRun, "dryRun");
+      const anchors = service.registerBulk((req.body ?? {}).anchors, dryRun);
+      await service.flush();
+      res.status(201).json({ anchors, dryRun });
+    }).catch(next);
   });
 
   // List anchors, optionally filtered via ?status=active|inactive and/or a
@@ -123,18 +127,30 @@ export function anchorRouter(
   });
 
   // Partially update an anchor's mutable fields (currently just `name`).
-  router.patch("/:id", (req: Request, res: Response) => {
-    res.json(service.update(req.params.id, req.body ?? {}));
+  router.patch("/:id", (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve().then(async () => {
+      const anchor = service.update(req.params.id, req.body ?? {});
+      await service.flush();
+      res.json(anchor);
+    }).catch(next);
   });
 
   // Deactivate an anchor.
-  router.delete("/:id", (req: Request, res: Response) => {
-    res.json(service.deregister(req.params.id));
+  router.delete("/:id", (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve().then(async () => {
+      const anchor = service.deregister(req.params.id);
+      await service.flush();
+      res.json(anchor);
+    }).catch(next);
   });
 
   // Reactivate a previously deactivated anchor.
-  router.post("/:id/reactivate", (req: Request, res: Response) => {
-    res.json(service.reactivate(req.params.id));
+  router.post("/:id/reactivate", (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve().then(async () => {
+      const anchor = service.reactivate(req.params.id);
+      await service.flush();
+      res.json(anchor);
+    }).catch(next);
   });
 
   // List settlements for a specific anchor, scoped by its id.
