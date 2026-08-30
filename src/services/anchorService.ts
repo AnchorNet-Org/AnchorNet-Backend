@@ -17,6 +17,12 @@ export class AnchorService {
 
   constructor(private readonly repo: AnchorRepository) {}
 
+  /** Waits for a durable repository, while remaining a no-op for memory tests. */
+  async flush(): Promise<void> {
+    const durable = this.repo as AnchorRepository & { flush?: () => Promise<void> };
+    await durable.flush?.();
+  }
+
   /** Registers a new anchor. Fails with 409 if the id already exists. */
   register(input: { id: unknown; name?: unknown }): Anchor {
     const id = requireString(input.id, "id");

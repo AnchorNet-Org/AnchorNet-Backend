@@ -34,8 +34,15 @@ import { createAuditLog } from "./middleware/auditLog";
 import { loadConfig, validateConfig, Config } from "./config";
 import { buildOpenApiSpec } from "./openapi";
 import { isReady } from "./utils/readiness";
+import { PersistenceRuntime } from "./persistence/runtime";
+import {
+  PersistentAnchorRepository,
+  PersistentLiquidityRepository,
+  PersistentSettlementRepository,
+} from "./repositories/persistentRepositories";
+import { PersistentSettlementService } from "./services/persistentSettlementService";
 
-export function createApp(): Express {
+export function createApp(options: { persistence?: PersistenceRuntime } = {}): Express {
   const app = express();
   const config = validateConfig(loadConfig());
   app.set('trust proxy', 1); // Ensure req.ip reflects real client IP behind reverse proxy (#120)
@@ -56,15 +63,41 @@ export function createApp(): Express {
   const audit = createAuditLog();
   app.use(audit.middleware);
 
-  const repo = new LiquidityRepository();
-  const anchors = new AnchorService(new AnchorRepository());
+  if (config.databaseUrl && !options.persistence) {
+    throw new Error(
+      "PostgreSQL persistence has not been initialized; call initializePersistence() before createApp()",
+    );
+  }
+
+  const repo = options.persistence
+    ? new PersistentLiquidityRepository(
+        options.persistence.database,
+        options.persistence.snapshot,
+      )
+    : new LiquidityRepository();
+  const anchorRepo = options.persistence
+    ? new PersistentAnchorRepository(
+        options.persistence.database,
+        options.persistence.snapshot,
+      )
+    : new AnchorRepository();
+  const settlementRepo = options.persistence
+    ? new PersistentSettlementRepository(
+        options.persistence.database,
+        options.persistence.snapshot,
+      )
+    : new SettlementRepository();
+  const anchors = new AnchorService(anchorRepo);
   const quotes = new QuoteService(repo, config.feeBps);
-  const settlements = new SettlementService(
-    new SettlementRepository(),
-    repo,
-    anchors,
-    config.feeBps,
-  );
+  const settlements = options.persistence
+    ? new PersistentSettlementService(
+        options.persistence.database,
+        settlementRepo as PersistentSettlementRepository,
+        repo as PersistentLiquidityRepository,
+        anchors,
+        config.feeBps,
+      )
+    : new SettlementService(settlementRepo, repo, anchors, config.feeBps);
   const liquidity = new LiquidityService(repo, settlements);
 
   app.get("/health", (_req: Request, res: Response) => {

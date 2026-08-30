@@ -33,6 +33,12 @@ export class LiquidityService {
     private readonly settlementService?: SettlementService,
   ) {}
 
+  /** Waits for a durable repository, while remaining a no-op for memory tests. */
+  async flush(): Promise<void> {
+    const durable = this.repo as LiquidityRepository & { flush?: () => Promise<void> };
+    await durable.flush?.();
+  }
+
   /**
    * Records `amount` of liquidity from `anchor` in `asset`. If the anchor
    * already has a balance for the asset, the amounts are accumulated.

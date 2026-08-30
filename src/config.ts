@@ -53,6 +53,8 @@ export interface Config {
    * real client address rather than the proxy's IP.
    */
   trustProxy: boolean | string | number;
+  /** PostgreSQL connection string used by the production persistence layer. */
+  databaseUrl?: string;
 }
 
 const DEFAULT_BODY_LIMIT = "100kb";
@@ -157,6 +159,7 @@ export function loadConfig(
 ): Config {
   const apiKey = env.API_KEY?.trim();
   const metricsApiKey = env.METRICS_API_KEY?.trim();
+  const databaseUrl = env.DATABASE_URL?.trim() || undefined;
   const feeBps = intFromEnv(env.FEE_BPS, 10);
 
   if (feeBps < MIN_FEE_BPS || feeBps > MAX_FEE_BPS) {
@@ -183,6 +186,7 @@ export function loadConfig(
     metricsRateLimitMax: intFromEnv(env.METRICS_RATE_LIMIT_MAX, 120),
     metricsRateLimitWindowMs: intFromEnv(env.METRICS_RATE_LIMIT_WINDOW_MS, 60_000),
     trustProxy: parseTrustProxy(env.TRUST_PROXY),
+    databaseUrl,
   };
 
   return validateConfig(config);
@@ -229,6 +233,31 @@ export function validateConfig(config: Config): Config {
       "API_KEY is required when NODE_ENV=production. Refusing to start with open (unauthenticated) mutating access. Set API_KEY to enable API-key authentication.",
       "API_KEY",
     );
+  }
+
+  if (config.env === "production" && !config.databaseUrl) {
+    throw new ConfigValidationError(
+      "DATABASE_URL is required when NODE_ENV=production. Refusing to start without durable persistence.",
+      "DATABASE_URL",
+    );
+  }
+
+  if (config.databaseUrl) {
+    let parsed: URL;
+    try {
+      parsed = new URL(config.databaseUrl);
+    } catch {
+      throw new ConfigValidationError(
+        "DATABASE_URL must be a valid PostgreSQL connection string",
+        "DATABASE_URL",
+      );
+    }
+    if (parsed.protocol !== "postgres:" && parsed.protocol !== "postgresql:") {
+      throw new ConfigValidationError(
+        "DATABASE_URL must use the postgres:// or postgresql:// scheme",
+        "DATABASE_URL",
+      );
+    }
   }
 
   if (

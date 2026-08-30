@@ -15,6 +15,7 @@ describe("loadConfig", () => {
       FEE_BPS: "25",
       API_KEY: "secret",
       NODE_ENV: "production",
+      DATABASE_URL: "postgres://localhost/anchornet",
     });
     expect(config.port).toBe(8080);
     expect(config.feeBps).toBe(25);
@@ -78,7 +79,11 @@ describe("loadConfig", () => {
 
     it("accepts a configured API_KEY in production", () => {
       expect(() =>
-        loadConfig({ NODE_ENV: "production", API_KEY: "secret" }),
+        loadConfig({
+          NODE_ENV: "production",
+          API_KEY: "secret",
+          DATABASE_URL: "postgres://localhost/anchornet",
+        }),
       ).not.toThrow();
     });
 
@@ -264,8 +269,24 @@ describe("validateConfig", () => {
   });
 
   it("allows a production deploy that sets API_KEY", () => {
-    const config = loadConfig({ NODE_ENV: "production", API_KEY: "secret" });
+    const config = loadConfig({
+      NODE_ENV: "production",
+      API_KEY: "secret",
+      DATABASE_URL: "postgres://localhost/anchornet",
+    });
     expect(() => validateConfig(config)).not.toThrow();
+  });
+
+  it("requires DATABASE_URL in production", () => {
+    expect(() => loadConfig({ NODE_ENV: "production", API_KEY: "secret" })).toThrow(
+      /DATABASE_URL is required/,
+    );
+  });
+
+  it("rejects non-PostgreSQL database URLs", () => {
+    expect(() => loadConfig({ DATABASE_URL: "mysql://localhost/anchornet" })).toThrow(
+      /DATABASE_URL must use the postgres/,
+    );
   });
 
   it("does NOT require API_KEY in development (open access is allowed, not fatal)", () => {

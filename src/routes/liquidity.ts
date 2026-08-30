@@ -2,7 +2,7 @@
  * Routes for recording and reading anchor liquidity.
  */
 
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { ApiError } from "../errors/ApiError";
 import { LiquidityService } from "../services/liquidityService";
 import { paginateByCursor } from "../utils/cursorPagination";
@@ -11,7 +11,7 @@ export function liquidityRouter(service: LiquidityService): Router {
   const router = Router();
 
   // Record (or accumulate) liquidity for an anchor/asset pair.
-  router.post("/", (req: Request, res: Response) => {
+  router.post("/", (req: Request, res: Response, next: NextFunction) => {
     const raw = req.body.amount;
 
     // Reject values that cannot represent a valid positive integer amount:
@@ -36,23 +36,32 @@ export function liquidityRouter(service: LiquidityService): Router {
       throw ApiError.badRequest('"amount" must be a positive finite number');
     }
 
-    const entry = service.addLiquidity(req.body ?? {});
-    res.status(201).json({ ...entry, amount: entry.amount.toString() });
+    Promise.resolve().then(async () => {
+      const entry = service.addLiquidity(req.body ?? {});
+      await service.flush();
+      res.status(201).json({ ...entry, amount: entry.amount.toString() });
+    }).catch(next);
   });
 
   // Withdraw (reduce) liquidity previously recorded for an anchor/asset pair.
-  router.post("/withdraw", (req: Request, res: Response) => {
-    const entry = service.withdrawLiquidity(req.body ?? {});
-    res.json({ ...entry, amount: entry.amount.toString() });
+  router.post("/withdraw", (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve().then(async () => {
+      const entry = service.withdrawLiquidity(req.body ?? {});
+      await service.flush();
+      res.json({ ...entry, amount: entry.amount.toString() });
+    }).catch(next);
   });
 
   // Atomically transfer liquidity between two anchors for the same asset.
-  router.post("/transfer", (req: Request, res: Response) => {
-    const result = service.transferLiquidity(req.body ?? {});
-    res.json({
+  router.post("/transfer", (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve().then(async () => {
+      const result = service.transferLiquidity(req.body ?? {});
+      await service.flush();
+      res.json({
         from: { ...result.from, amount: result.from.amount.toString() },
         to: { ...result.to, amount: result.to.amount.toString() }
-    });
+      });
+    }).catch(next);
   });
 
   // List aggregated pools across all assets.
@@ -111,9 +120,12 @@ export function liquidityRouter(service: LiquidityService): Router {
   });
 
   // Force-remove an anchor's entire liquidity entry for an asset.
-  router.delete("/:anchor/:asset", (req: Request, res: Response) => {
-    const entry = service.removeEntry(req.params.anchor, req.params.asset);
-    res.json({ ...entry, amount: entry.amount.toString() });
+  router.delete("/:anchor/:asset", (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve().then(async () => {
+      const entry = service.removeEntry(req.params.anchor, req.params.asset);
+      await service.flush();
+      res.json({ ...entry, amount: entry.amount.toString() });
+    }).catch(next);
   });
 
   // Read the raw liquidity entries for a single anchor.
