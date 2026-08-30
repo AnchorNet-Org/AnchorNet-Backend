@@ -134,20 +134,6 @@ function parseTrustProxy(value: string | undefined): boolean | string | number {
 }
 
 /**
- * Error thrown when a required configuration value is missing or invalid.
- * Carries the offending variable name so the message can name it directly
- * (see {@link validateConfig}).
- */
-export class ConfigValidationError extends Error {
-  readonly variable: string;
-  constructor(variable: string, message: string) {
-    super(message);
-    this.name = "ConfigValidationError";
-    this.variable = variable;
-  }
-}
-
-/**
  * Fail-fast configuration contract.
  *
  * Runs once at startup (invoked from {@link loadConfig}, before the server
@@ -165,18 +151,6 @@ export class ConfigValidationError extends Error {
  *     separate `apiKeyAuth` issue. Here we only guarantee the deployment
  *     visibly refuses to start instead of silently running unauthenticated.
  */
-export function validateConfig(config: Config): Config {
-  if (config.env === "production" && !config.apiKey) {
-    throw new ConfigValidationError(
-      "API_KEY",
-      "API_KEY is required when NODE_ENV=production. Without it, mutating " +
-        "endpoints are open to unauthenticated access (see src/middleware/apiKeyAuth.ts). " +
-        "Set API_KEY to a secret value, or run with NODE_ENV=development for local open access.",
-    );
-  }
-  return config;
-}
-
 /** Builds the {@link Config} from `process.env`, applying sensible defaults. */
 export function loadConfig(
   env: Record<string, string | undefined> = process.env,
@@ -240,9 +214,12 @@ export function loadConfig(
  * contract easy to review.
  */
 export class ConfigValidationError extends Error {
-  constructor(message: string) {
+  readonly variable: string;
+
+  constructor(message: string, variable: string) {
     super(message);
     this.name = "ConfigValidationError";
+    this.variable = variable;
   }
 }
 
@@ -250,6 +227,7 @@ export function validateConfig(config: Config): Config {
   if (config.env === "production" && !config.apiKey) {
     throw new ConfigValidationError(
       "API_KEY is required when NODE_ENV=production. Refusing to start with open (unauthenticated) mutating access. Set API_KEY to enable API-key authentication.",
+      "API_KEY",
     );
   }
 
@@ -261,18 +239,21 @@ export function validateConfig(config: Config): Config {
   ) {
     throw new ConfigValidationError(
       `PORT must be an integer between 1 and 65535 (got ${String(config.port)})`,
+      "PORT",
     );
   }
 
   if (config.rateLimitMax < 0) {
     throw new ConfigValidationError(
       `RATE_LIMIT_MAX must be >= 0 (got ${config.rateLimitMax})`,
+      "RATE_LIMIT_MAX",
     );
   }
 
   if (config.idempotencyTtlMs < 0) {
     throw new ConfigValidationError(
       `IDEMPOTENCY_TTL_MS must be >= 0 (got ${config.idempotencyTtlMs})`,
+      "IDEMPOTENCY_TTL_MS",
     );
   }
 

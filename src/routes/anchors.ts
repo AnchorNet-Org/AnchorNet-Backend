@@ -9,8 +9,10 @@ import { Anchor } from "../models/anchor";
 import { Settlement } from "../models/settlement";
 import { applySort } from "../utils/sorting";
 import { paginate } from "../utils/pagination";
+import { paginateByCursor } from "../utils/cursorPagination";
 import { csvColumnsFor, toCsv } from "../utils/csv";
 import { optionalBooleanFlag } from "../utils/validation";
+import { ApiError } from "../errors/ApiError";
 
 const SORTABLE_FIELDS = ["id", "name", "registeredAt"];
 
@@ -79,20 +81,40 @@ export function anchorRouter(
 
   // List anchors, optionally filtered via ?status=active|inactive and/or a
   // free-text ?q= search over id/name, sorted via ?sort=id|name|registeredAt
-  // and ?order=asc|desc, and exported as CSV via ?format=csv.
+  // and ?order=asc|desc, and exported as CSV via ?format=csv. Without legacy
+  // offset parameters, the endpoint uses the canonical id-ascending cursor.
   router.get("/", (req: Request, res: Response) => {
-    const anchors = applySort(
-      service.list({ status: req.query.status, q: req.query.q }),
-      { sort: req.query.sort, order: req.query.order },
-      SORTABLE_FIELDS,
-    );
+    const hasCustomSort = req.query.sort !== undefined || req.query.order !== undefined;
+    const filtered = service.list({ status: req.query.status, q: req.query.q });
+    const sorted = hasCustomSort
+      ? applySort(filtered, { sort: req.query.sort, order: req.query.order }, SORTABLE_FIELDS)
+      : [...filtered].sort((a, b) => a.id.localeCompare(b.id));
 
     if (req.query.format === "csv") {
-      res.type("text/csv").send(toCsv(anchors, CSV_COLUMNS));
+      res.type("text/csv").send(toCsv(sorted, CSV_COLUMNS));
       return;
     }
 
-    res.json({ anchors });
+    const useCursor = req.query.cursor !== undefined ||
+      (!hasCustomSort && req.query.page === undefined);
+    if (useCursor && hasCustomSort) {
+      throw ApiError.badRequest("cursor pagination requires the canonical anchor order (id asc)");
+    }
+
+    if (useCursor) {
+      const page = paginateByCursor(sorted, {
+        cursor: req.query.cursor,
+        pageSize: req.query.pageSize,
+        direction: "asc",
+        scope: `anchors:${String(req.query.status ?? "")}:\u0000${String(req.query.q ?? "")}`,
+        keyOf: (anchor) => anchor.id,
+      });
+      res.json({ anchors: page.items, pagination: { pageSize: page.pageSize, nextCursor: page.nextCursor } });
+      return;
+    }
+
+    const page = paginate(sorted, { page: req.query.page, pageSize: req.query.pageSize });
+    res.json({ anchors: page.items, pagination: { ...page, items: undefined } });
   });
 
   // Read a single anchor by id.
@@ -132,16 +154,37 @@ export function anchorRouter(
       return;
     }
 
-    const sorted = applySort(
-      settlements.list({ anchor: req.params.id }),
-      { sort: req.query.sort, order: req.query.order },
-      SETTLEMENT_SORTABLE_FIELDS,
-    );
+    const hasCustomSort = req.query.sort !== undefined || req.query.order !== undefined;
+    const rawSettlements = settlements.list({ anchor: req.params.id });
+    const sorted = hasCustomSort
+      ? applySort(rawSettlements, { sort: req.query.sort, order: req.query.order }, SETTLEMENT_SORTABLE_FIELDS)
+      : [...rawSettlements].sort((a, b) => b.id - a.id);
 
     // CSV export ignores pagination and returns every matching, sorted row.
     if (req.query.format === "csv") {
       const stringifiedSorted = sorted.map(serializeSettlement);
       res.type("text/csv").send(toCsv(stringifiedSorted, SETTLEMENT_CSV_COLUMNS));
+      return;
+    }
+
+    const useCursor = req.query.cursor !== undefined ||
+      (!hasCustomSort && req.query.page === undefined);
+    if (useCursor && hasCustomSort) {
+      throw ApiError.badRequest("cursor pagination requires the canonical settlement order (id desc)");
+    }
+
+    if (useCursor) {
+      const page = paginateByCursor(sorted, {
+        cursor: req.query.cursor,
+        pageSize: req.query.pageSize,
+        direction: "desc",
+        scope: `anchor-settlements:${req.params.id}`,
+        keyOf: (settlement) => String(settlement.id).padStart(20, "0"),
+      });
+      res.json({
+        settlements: page.items.map(serializeSettlement),
+        pagination: { pageSize: page.pageSize, nextCursor: page.nextCursor },
+      });
       return;
     }
 

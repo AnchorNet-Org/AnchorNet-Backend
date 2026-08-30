@@ -5,6 +5,7 @@
 import { Router, Request, Response } from "express";
 import { ApiError } from "../errors/ApiError";
 import { LiquidityService } from "../services/liquidityService";
+import { paginateByCursor } from "../utils/cursorPagination";
 
 export function liquidityRouter(service: LiquidityService): Router {
   const router = Router();
@@ -55,8 +56,19 @@ export function liquidityRouter(service: LiquidityService): Router {
   });
 
   // List aggregated pools across all assets.
-  router.get("/", (_req: Request, res: Response) => {
-    res.json({ pools: service.listPools().map(p => ({ ...p, total: p.total.toString() })) });
+  router.get("/", (req: Request, res: Response) => {
+    const pools = service.listPools();
+    const page = paginateByCursor(pools, {
+      cursor: req.query.cursor,
+      pageSize: req.query.pageSize,
+      direction: "asc",
+      scope: "liquidity-pools",
+      keyOf: (pool) => pool.asset,
+    });
+    res.json({
+      pools: page.items.map(p => ({ ...p, total: p.total.toString() })),
+      pagination: { pageSize: page.pageSize, nextCursor: page.nextCursor },
+    });
   });
 
   // ---------------------------------------------------------------------
@@ -65,13 +77,37 @@ export function liquidityRouter(service: LiquidityService): Router {
   // ---------------------------------------------------------------------
 
   // List raw per-anchor entries. Registered before the catch-all GET /:asset
-  router.get("/entries", (_req: Request, res: Response) => {
-    res.json({ entries: service.listEntries().map(e => ({ ...e, amount: e.amount.toString() })) });
+  router.get("/entries", (req: Request, res: Response) => {
+    const entries = service.listEntries().sort((a, b) =>
+      `${a.anchor}\u0000${a.asset}`.localeCompare(`${b.anchor}\u0000${b.asset}`),
+    );
+    const page = paginateByCursor(entries, {
+      cursor: req.query.cursor,
+      pageSize: req.query.pageSize,
+      direction: "asc",
+      scope: "liquidity-entries",
+      keyOf: (entry) => `${entry.anchor}\u0000${entry.asset}`,
+    });
+    res.json({
+      entries: page.items.map(e => ({ ...e, amount: e.amount.toString() })),
+      pagination: { pageSize: page.pageSize, nextCursor: page.nextCursor },
+    });
   });
 
   // Read-only audit trail of successful withdrawals.
-  router.get("/withdrawals", (_req: Request, res: Response) => {
-    res.json({ withdrawals: service.listWithdrawals().map(w => ({ ...w, amount: w.amount.toString(), remainingBalance: w.remainingBalance.toString() })) });
+  router.get("/withdrawals", (req: Request, res: Response) => {
+    const withdrawals = service.listWithdrawals();
+    const page = paginateByCursor(withdrawals, {
+      cursor: req.query.cursor,
+      pageSize: req.query.pageSize,
+      direction: "asc",
+      scope: "liquidity-withdrawals",
+      keyOf: (withdrawal, index) => `${withdrawal.timestamp}\u0000${String(index).padStart(12, "0")}`,
+    });
+    res.json({
+      withdrawals: page.items.map(w => ({ ...w, amount: w.amount.toString(), remainingBalance: w.remainingBalance.toString() })),
+      pagination: { pageSize: page.pageSize, nextCursor: page.nextCursor },
+    });
   });
 
   // Force-remove an anchor's entire liquidity entry for an asset.
@@ -82,7 +118,18 @@ export function liquidityRouter(service: LiquidityService): Router {
 
   // Read the raw liquidity entries for a single anchor.
   router.get("/anchors/:anchor", (req: Request, res: Response) => {
-    res.json({ entries: service.listByAnchor(req.params.anchor).map(e => ({ ...e, amount: e.amount.toString() })) });
+    const entries = service.listByAnchor(req.params.anchor).sort((a, b) => a.asset.localeCompare(b.asset));
+    const page = paginateByCursor(entries, {
+      cursor: req.query.cursor,
+      pageSize: req.query.pageSize,
+      direction: "asc",
+      scope: `liquidity-anchor:${req.params.anchor}`,
+      keyOf: (entry) => entry.asset,
+    });
+    res.json({
+      entries: page.items.map(e => ({ ...e, amount: e.amount.toString() })),
+      pagination: { pageSize: page.pageSize, nextCursor: page.nextCursor },
+    });
   });
 
   // Read the aggregated pool for a single asset.

@@ -259,9 +259,8 @@ describe("validateConfig", () => {
   });
 
   it("requires API_KEY in production and fails fast", () => {
-    const config = loadConfig({ NODE_ENV: "production" });
-    expect(() => validateConfig(config)).toThrow(ConfigValidationError);
-    expect(() => validateConfig(config)).toThrow(/API_KEY is required/);
+    expect(() => loadConfig({ NODE_ENV: "production" })).toThrow(ConfigValidationError);
+    expect(() => loadConfig({ NODE_ENV: "production" })).toThrow(/API_KEY is required/);
   });
 
   it("allows a production deploy that sets API_KEY", () => {
@@ -280,23 +279,19 @@ describe("validateConfig", () => {
   });
 
   it("fails fast on an out-of-range PORT", () => {
-    const config = loadConfig({ PORT: "0" });
-    expect(() => validateConfig(config)).toThrow(ConfigValidationError);
-    expect(() => validateConfig(config)).toThrow(/PORT must be/);
+    expect(() => loadConfig({ PORT: "0" })).toThrow(ConfigValidationError);
+    expect(() => loadConfig({ PORT: "0" })).toThrow(/PORT must be/);
   });
 
   it("fails fast on a non-integer PORT", () => {
-    const config = loadConfig({ PORT: "3001.5" });
-    expect(() => validateConfig(config)).toThrow(ConfigValidationError);
+    expect(() => loadConfig({ PORT: "3001.5" })).toThrow(ConfigValidationError);
   });
 
   it("fails fast on a negative RATE_LIMIT_MAX", () => {
-    const config = loadConfig({ RATE_LIMIT_MAX: "-1" });
-    expect(() => validateConfig(config)).toThrow(ConfigValidationError);
+    expect(() => loadConfig({ RATE_LIMIT_MAX: "-1" })).toThrow(ConfigValidationError);
   });
 
   it("fails fast on a negative IDEMPOTENCY_TTL_MS", () => {
-    const config = loadConfig({ IDEMPOTENCY_TTL_MS: "-1" });
-    expect(() => validateConfig(config)).toThrow(ConfigValidationError);
+    expect(() => loadConfig({ IDEMPOTENCY_TTL_MS: "-1" })).toThrow(ConfigValidationError);
   });
 });

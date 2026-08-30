@@ -578,12 +578,12 @@ describe("GET /api/v1/settlements — pagination validation (#108)", () => {
     expect(res.body.error.code).toBe("BAD_REQUEST");
   });
 
-  it("returns 200 with default page for omitted params", async () => {
+  it("returns 200 with the default cursor page for omitted params", async () => {
     const app = createApp();
     const res = await request(app).get("/api/v1/settlements");
     expect(res.status).toBe(200);
-    expect(res.body.pagination.page).toBe(1);
     expect(res.body.pagination.pageSize).toBe(20);
+    expect(res.body.pagination.nextCursor).toBeNull();
   });
 
   it("returns 200 with default page for empty params", async () => {
