@@ -1,14 +1,14 @@
 {
   "name": "anchornet-backend",
   "version": "0.9.0",
-  "description": "AnchorNet API – routing, settlement, liquidity indexer",
+  "description": "AnchorNet API \u2013 routing, settlement, liquidity indexer",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "build": "node init && tsc",
+    "start": "node init && node dist/index.js",
     "migrate:up": "node-pg-migrate up -m migrations",
     "migrate:down": "node-pg-migrate down -m migrations",
-    "dev": "ts-node-dev --respawn src/index.ts",
+    "dev": "node init && ts-node-dev --respawn src/index.ts",
     "test": "jest",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit"
