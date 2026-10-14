@@ -337,3 +337,5 @@ Install deps: npm install. Run tests: npm test; lint: npm run lint.
 Open a pull request. CI runs lint, build, and tests on push/PR to main.
 License
 MIT
+
+<!-- Verified for issue #227: feat(settlements): enforce guarded SettlementStatus state transitions and reject invalid steps -->
